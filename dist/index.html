@@ -1,0 +1,968 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8" />
+  <title>Chevere tu Launcher</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, "Segoe UI", sans-serif;
+      background: #15151a;
+      color: #eee;
+      height: 100vh;
+      overflow: hidden;
+      user-select: none;
+    }
+
+    #titlebar {
+      height: 32px;
+      background: #101014;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding-left: 10px;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 1000;
+      -webkit-app-region: drag;
+    }
+
+    #titlebar-title {
+      font-size: 12px;
+      color: rgba(255, 255, 255, 0.7);
+      pointer-events: none;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    #titlebar-title img {
+      height: 18px;
+      width: 18px;
+      object-fit: contain;
+      pointer-events: none;
+    }
+
+    #titlebar-buttons {
+      display: flex;
+      height: 100%;
+      -webkit-app-region: no-drag;
+    }
+
+    #titlebar-buttons button {
+      width: 44px;
+      height: 100%;
+      border: none;
+      background: transparent;
+      color: rgba(255, 255, 255, 0.7);
+      cursor: pointer;
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    #titlebar-buttons button:hover {
+      background: rgba(255, 255, 255, 0.1);
+    }
+
+    #titlebar-close:hover {
+      background: #e81123 !important;
+      color: #fff;
+    }
+
+    .screen,
+    #main-screen {
+      margin-top: 32px;
+      height: calc(100vh - 32px) !important;
+    }
+
+    .screen {
+      display: none;
+      height: 100vh;
+    }
+
+    .screen.active {
+      display: flex;
+    }
+
+    /* ============ LOGIN ============ */
+    #login-screen {
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 0;
+      background-image: url('img/bg-login.png');
+      background-size: cover;
+      background-position: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .login-content {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 40px;
+    }
+
+    .login-title {
+      font-size: 52px;
+      font-weight: 900;
+      color: #fff;
+      text-align: center;
+      line-height: 1.1;
+      letter-spacing: -1px;
+      text-shadow: 0 2px 20px rgba(0, 0, 0, 0.2);
+    }
+
+    .login-buttons {
+      display: flex;
+      flex-direction: row;
+      gap: 20px;
+      align-items: flex-start;
+    }
+
+    .login-btn-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .login-btn {
+      padding: 14px 28px;
+      font-size: 15px;
+      font-weight: 700;
+      border-radius: 50px;
+      border: none;
+      cursor: pointer;
+      color: #fff;
+      min-width: 200px;
+      transition: transform 0.1s, opacity 0.1s;
+    }
+
+    .login-btn:active {
+      transform: scale(0.97);
+    }
+
+    .login-btn:disabled {
+      opacity: .5;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    #btn-premium {
+      background: rgba(255, 255, 255, 0.2);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      color: rgba(255, 255, 255, 0.6);
+      cursor: not-allowed;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2px;
+    }
+
+    .maintenance-tag {
+      font-size: 10px;
+      font-weight: 700;
+      color: #ffd080;
+      letter-spacing: 0.5px;
+    }
+
+    #btn-nopremium {
+      background: #5865F2;
+      box-shadow: 0 4px 20px rgba(88, 101, 242, 0.5);
+    }
+
+    #btn-nopremium:hover:not(:disabled) {
+      background: #4752c4;
+      box-shadow: 0 6px 24px rgba(88, 101, 242, 0.6);
+    }
+
+    #login-status {
+      min-height: 24px;
+      font-size: 14px;
+      color: rgba(255, 255, 255, 0.8);
+      text-align: center;
+      max-width: 400px;
+    }
+
+    #login-status.error {
+      color: #ff9090;
+    }
+
+    /* ============ DISCORD CODE ============ */
+    #discord-code-screen {
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 24px;
+      background-image: url('img/bg-login.png');
+      background-size: cover;
+      background-position: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .discord-code-content {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+      text-align: center;
+    }
+
+    .discord-code-content h2 {
+      font-size: 28px;
+      font-weight: 900;
+      color: #fff;
+      letter-spacing: -0.5px;
+    }
+
+    .discord-code-content p {
+      font-size: 15px;
+      color: rgba(255, 255, 255, 0.85);
+      line-height: 1.5;
+    }
+
+    #code-input {
+      padding: 14px 20px;
+      border-radius: 50px;
+      border: none;
+      background: rgba(255, 255, 255, 0.95);
+      color: #1a1a2e;
+      font-size: 22px;
+      font-weight: 700;
+      width: 220px;
+      text-align: center;
+      letter-spacing: 6px;
+      outline: none;
+    }
+
+    #code-input::placeholder {
+      color: #aaa;
+      letter-spacing: 2px;
+      font-size: 14px;
+      font-weight: 400;
+    }
+
+    #btn-verify-code {
+      padding: 12px 36px;
+      border-radius: 50px;
+      border: none;
+      background: #1a1a2e;
+      color: #fff;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: opacity 0.1s;
+    }
+
+    #btn-verify-code:hover {
+      opacity: 0.85;
+    }
+
+    #code-status {
+      font-size: 13px;
+      color: rgba(255, 255, 255, 0.8);
+      min-height: 20px;
+    }
+
+    #code-status.error {
+      color: #ff9090;
+    }
+
+    #btn-back-to-login {
+      font-size: 13px;
+      color: rgba(255, 255, 255, 0.6);
+      background: none;
+      border: none;
+      cursor: pointer;
+      text-decoration: underline;
+      margin-top: 4px;
+    }
+
+    /* ============ UNAUTHORIZED ============ */
+    #unauthorized-screen {
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 24px;
+      padding: 40px;
+      text-align: center;
+      background-image: url('img/bg-login.png');
+      background-size: cover;
+      background-position: center;
+    }
+
+    #unauthorized-screen h2 {
+      font-size: 24px;
+      font-weight: 800;
+      color: #fff;
+    }
+
+    #unauthorized-screen p {
+      font-size: 14px;
+      color: rgba(255, 255, 255, 0.85);
+      max-width: 380px;
+      line-height: 1.65;
+    }
+
+    #unauthorized-screen strong {
+      color: #fff;
+    }
+
+    .unauth-hint {
+      background: rgba(0, 0, 0, 0.2);
+      border-radius: 12px;
+      padding: 14px 20px;
+      font-size: 13px;
+      color: rgba(255, 255, 255, 0.8);
+      max-width: 380px;
+      line-height: 1.6;
+    }
+
+    #btn-back-login {
+      padding: 10px 24px;
+      border-radius: 50px;
+      border: 1px solid rgba(255, 255, 255, 0.4);
+      background: transparent;
+      color: #fff;
+      font-size: 13px;
+      cursor: pointer;
+    }
+
+    /* ============ MAIN MENU ============ */
+    #main-screen {
+      position: relative;
+      flex-direction: column;
+      background-image: url('img/bg-stage.png');
+      background-size: cover;
+      background-position: center top;
+      overflow: hidden;
+    }
+
+    /* Izquierda: skin + nombre */
+
+    #side-left {
+      position: absolute;
+      left: 25px;
+      top: 0;
+      bottom: 0;
+      width: 190px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 15px;
+      transform: translateY(-250px);
+    }
+
+    #player-skin-img {
+      width: 120px;
+      height: 120px;
+      image-rendering: pixelated;
+      object-fit: contain;
+    }
+
+    #player-nick {
+      width: 150px;
+      font-size: 20px;
+      font-weight: 700;
+      color: #fff;
+      text-align: center;
+      text-shadow: 0 2px 6px rgba(0, 0, 0, 0.8);
+      overflow-wrap: break-word;
+    }
+
+    #player-nick::before {
+      content: '"';
+    }
+
+    #player-nick::after {
+      content: '"';
+    }
+
+    /* Centro arriba: logo CHEVERE STUDEOS */
+    #center-logo {
+      position: absolute;
+      top: 50px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+
+    }
+
+    #center-logo img {
+      height: 120px;
+      object-fit: contain;
+      filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.5));
+    }
+
+    /* Centro pantalla: logo.png */
+    #center-stage-logo {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      pointer-events: none;
+    }
+
+    #center-stage-logo img {
+      max-width: 200px;
+      max-height: 340px;
+      object-fit: contain;
+      filter: drop-shadow(0 4px 16px rgba(0, 0, 0, 0.6));
+    }
+
+    /* Derecha: instancias */
+    #side-right {
+      position: absolute;
+      right: 0;
+      top: 0;
+      bottom: 0;
+      width: 200px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      /* Antes: center */
+      padding: 120px 20px 20px;
+      /* Baja el botón desde arriba */
+      gap: 12px;
+    }
+
+    #instances-dropdown-btn {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      background: none;
+      border: none;
+      color: #fff;
+      font-size: 19px;
+      font-weight: 600;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      cursor: pointer;
+      text-shadow: 0 2px 6px rgba(0, 0, 0, 0.8);
+      padding: 4px 0;
+    }
+
+    #instances-dropdown-btn .arrow {
+      font-size: 12px;
+    }
+
+    #instances-panel {
+      display: none;
+      flex-direction: column;
+      gap: 8px;
+      width: 180px;
+      max-height: 300px;
+      overflow-y: auto;
+      margin-top: 10px;
+      /* Hace que las tarjetas aparezcan debajo del botón */
+    }
+
+    #instances-panel.open {
+      display: flex;
+    }
+
+    .instance-card {
+      background: rgba(19, 33, 34, 0.88);
+      backdrop-filter: blur(8px);
+      border-radius: 5px;
+      overflow: hidden;
+      border: 1px solid rgba(180, 180, 180, 0.082);
+      display: flex;
+      flex-direction: column;
+      transition: border-color 0.15s;
+    }
+
+    .instance-card:hover {
+      border-color: rgba(255, 255, 255, 0.411);
+    }
+
+    .instance-card img {
+      width: 100%;
+      height: 90px;
+      /* Antes: 1000px */
+      object-fit: cover;
+    }
+
+    .instance-card .body {
+      padding: 10px 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .instance-card .name {
+      font-weight: 650;
+      font-size: 15px;
+      color: #fff;
+    }
+
+    .instance-card .meta {
+      font-size: 10px;
+      color: #888;
+    }
+
+    .instance-card .actions {
+      margin-top: 6px;
+      display: flex;
+      gap: 6px;
+    }
+
+    .instance-card button {
+      flex: 1;
+      padding: 6px;
+      border-radius: 5px;
+      border: none;
+      cursor: pointer;
+      font-weight: 700;
+      font-size: 11px;
+      color: #fff;
+    }
+
+    .btn-download {
+      background: #3b82f6;
+    }
+
+    .btn-repair {
+      background: #92400e;
+    }
+
+    .btn-play {
+      background: #15803d;
+    }
+
+    .instance-card .progress {
+      font-size: 10px;
+      color: #7dd3fc;
+      min-height: 12px;
+    }
+
+    /* Botones inferiores izquierda */
+    #bottom-left-btns {
+      position: absolute;
+      bottom: 20px;
+      left: 16px;
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .bottom-btn {
+      height: 40px;
+      border-radius: 20px;
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: transform 0.1s, opacity 0.15s;
+    }
+
+    .bottom-btn:hover {
+      transform: scale(1.08);
+    }
+
+    #btn-config {
+      width: 40px;
+      background: #2ec4d6;
+      font-size: 18px;
+      border-radius: 50%;
+    }
+
+    #btn-exit {
+      background: #fff;
+      color: #222;
+      font-size: 12px;
+      font-weight: 800;
+      padding: 0 18px;
+      letter-spacing: 0.5px;
+    }
+
+    /* ============ MINI MENU CONFIGURACION (RAM) ============ */
+    #config-panel {
+      position: absolute;
+      bottom: 68px;
+      left: 16px;
+      width: 260px;
+      background: rgba(20, 20, 28, 0.94);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 12px;
+      padding: 16px;
+      display: none;
+      flex-direction: column;
+      gap: 10px;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+      z-index: 5;
+    }
+
+    #config-panel.open {
+      display: flex;
+    }
+
+    #config-panel .config-title {
+      font-size: 13px;
+      font-weight: 800;
+      color: #fff;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+    }
+
+    #config-panel .ram-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    #config-panel .ram-label {
+      font-size: 12px;
+      color: #aaa;
+    }
+
+    #config-panel .ram-value {
+      font-size: 13px;
+      font-weight: 700;
+      color: #2ec4d6;
+    }
+
+    #ram-slider {
+      width: 100%;
+      accent-color: #2ec4d6;
+      cursor: pointer;
+    }
+
+    #config-panel .ram-minmax {
+      display: flex;
+      justify-content: space-between;
+      font-size: 10px;
+      color: #666;
+    }
+
+    /* ============ OVERLAY DETALLE INSTANCIA ============ */
+    #detail-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.72);
+      backdrop-filter: blur(6px);
+      z-index: 100;
+      align-items: center;
+      justify-content: center;
+    }
+
+    #detail-overlay.open {
+      display: flex;
+    }
+
+    #detail-box {
+      background: rgba(20, 20, 28, 0.97);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 16px;
+      width: 340px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 16px 48px rgba(0, 0, 0, 0.7);
+    }
+
+    #detail-logo {
+      width: 100%;
+      height: 160px;
+      object-fit: cover;
+      display: block;
+    }
+
+    #detail-logo-fallback {
+      width: 100%;
+      height: 160px;
+      background: rgba(255, 255, 255, 0.04);
+      display: none;
+    }
+
+    #detail-body {
+      padding: 20px 20px 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    #detail-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+    }
+
+    #detail-name {
+      font-size: 18px;
+      font-weight: 800;
+      color: #fff;
+      line-height: 1.2;
+      flex: 1;
+    }
+
+    #detail-close {
+      background: none;
+      border: none;
+      color: rgba(255, 255, 255, 0.4);
+      font-size: 20px;
+      cursor: pointer;
+      padding: 0 0 0 12px;
+      line-height: 1;
+      transition: color 0.15s;
+    }
+
+    #detail-close:hover {
+      color: #fff;
+    }
+
+    #detail-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    #detail-actions button {
+      flex: 1;
+      padding: 10px;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+      font-weight: 700;
+      font-size: 13px;
+      color: #fff;
+      transition: opacity 0.15s;
+    }
+
+    #detail-actions button:hover {
+      opacity: 0.85;
+    }
+
+    #detail-actions button:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
+    #detail-progress-area {
+      display: none;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    #detail-progress-area.show {
+      display: flex;
+    }
+
+    #detail-progress-status {
+      font-size: 12px;
+      color: rgba(255, 255, 255, 0.6);
+    }
+
+    #detail-progress-bar {
+      width: 100%;
+      height: 6px;
+      background: rgba(255, 255, 255, 0.08);
+      border-radius: 3px;
+      overflow: hidden;
+    }
+
+    #detail-progress-fill {
+      height: 100%;
+      background: #3b82f6;
+      border-radius: 3px;
+      width: 0%;
+      transition: width 0.2s;
+    }
+
+    #detail-progress-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    #detail-progress-percent {
+      font-size: 11px;
+      color: #7dd3fc;
+      font-weight: 700;
+    }
+
+    #detail-update-badge {
+      display: none;
+      font-size: 10px;
+      font-weight: 700;
+      color: #fbbf24;
+      background: rgba(251, 191, 36, 0.12);
+      border: 1px solid rgba(251, 191, 36, 0.25);
+      border-radius: 20px;
+      padding: 2px 8px;
+      align-self: flex-start;
+    }
+
+    #detail-update-badge.show {
+      display: block;
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- BARRA DE TITULO PERSONALIZADA -->
+  <div id="titlebar" data-tauri-drag-region>
+    <span id="titlebar-title" data-tauri-drag-region><img src="img/logo.png" alt="" />Chevere Tu Launcher v1.0.0</span>
+    <div id="titlebar-buttons">
+      <button id="titlebar-minimize" title="Minimizar">─</button>
+      <button id="titlebar-maximize" title="Maximizar">☐</button>
+      <button id="titlebar-close" title="Cerrar">✕</button>
+    </div>
+  </div>
+
+  <!-- PANTALLA DE LOGIN -->
+  <div id="login-screen" class="screen active">
+    <div class="login-content">
+      <h1 class="login-title">INICIE SESION<br>CON SU CUENTA</h1>
+      <div class="login-buttons">
+        <div class="login-btn-wrap">
+          <button id="btn-premium" class="login-btn" disabled>
+            Conecta con Microsoft
+            <span class="maintenance-tag">(MANTENIMIENTO)</span>
+          </button>
+        </div>
+        <div class="login-btn-wrap">
+          <button id="btn-nopremium" class="login-btn">Conecta con Discord</button>
+        </div>
+      </div>
+      <div id="login-status"></div>
+    </div>
+  </div>
+
+  <!-- PANTALLA DE CODIGO DISCORD -->
+  <div id="discord-code-screen" class="screen">
+    <div class="discord-code-content">
+      <h2>CONECTANDO MEDIANTE DISCORD...</h2>
+      <p>ingrese el codigo que le envio el bot "BotChevereStudeos"<br>en su discord (<span
+          id="code-discord-username"></span>)</p>
+      <input id="code-input" placeholder="000000" maxlength="6" />
+      <button id="btn-verify-code">Verificar</button>
+      <div id="code-status"></div>
+      <button id="btn-back-to-login">← Volver al inicio</button>
+    </div>
+  </div>
+
+  <!-- PANTALLA SIN AUTORIZACIÓN -->
+  <div id="unauthorized-screen" class="screen">
+    <h2>SIN AUTORIZACION</h2>
+    <p>Usted no se encuentra registrado en la whitelist. Pide al Administrador que te agregue en Discord.<br />
+      Iniciaste sesión con la cuenta <strong id="unauth-username"></strong>.
+    </p>
+    <div class="unauth-hint">
+      Ve al servidor de Discord y comparte tu usuario de Minecraft en el canal correspondiente para que el admin te
+      agregue a la whitelist.
+    </div>
+    <button id="btn-back-login">← Volver al inicio</button>
+  </div>
+
+  <!-- MENU PRINCIPAL -->
+  <div id="main-screen" class="screen">
+
+    <!-- Izquierda: skin + username -->
+    <div id="side-left">
+      <img id="player-skin-img" src="" alt="skin" />
+      <div id="player-nick">Steve</div>
+    </div>
+
+    <!-- Centro arriba: logo CHEVERE STUDEOS -->
+    <div id="center-logo">
+      <img src="img/chevere-studeos.png" alt="Chevere Studeos" />
+    </div>
+
+    <!-- Centro pantalla: logo.png -->
+    <div id="center-stage-logo">
+      <img src="img/logo.png" alt="Logo" />
+    </div>
+
+    <!-- Derecha: instancias -->
+    <div id="side-right">
+      <button id="instances-dropdown-btn">
+        INSTANCIAS <span class="arrow">▼</span>
+      </button>
+      <div id="instances-panel"></div>
+    </div>
+
+    <!-- Mini menu configuracion (RAM) -->
+    <div id="config-panel">
+      <div class="config-title">Configuración</div>
+      <div class="ram-row">
+        <span class="ram-label">Memoria RAM asignada</span>
+        <span class="ram-value" id="ram-value">4 GB</span>
+      </div>
+      <input type="range" id="ram-slider" min="1" max="16" step="1" value="4" />
+      <div class="ram-minmax"><span>1 GB</span><span>16 GB</span></div>
+      <div class="config-title" style="margin-top:8px">Tamaño de ventana</div>
+      <select id="size-select" style="
+    width:100%; padding:6px 10px; border-radius:8px;
+    background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.12);
+    color:#fff; font-size:12px; cursor:pointer; outline:none;
+  "></select>
+    </div>
+
+    <!-- Botones inferiores izquierda -->
+    <div id="bottom-left-btns">
+      <button class="bottom-btn" id="btn-config" title="Configuración">⚙</button>
+      <button class="bottom-btn" id="btn-exit">SALIR</button>
+    </div>
+
+  </div>
+
+
+  <!-- Overlay detalle de instancia -->
+  <div id="detail-overlay">
+    <div id="detail-box">
+      <img id="detail-logo" src="" alt="" />
+      <div id="detail-logo-fallback"></div>
+      <div id="detail-body">
+        <div id="detail-header">
+          <div id="detail-name"></div>
+          <button id="detail-close">✕</button>
+        </div>
+        <span id="detail-update-badge">↑ Actualización disponible</span>
+        <div id="detail-actions"></div>
+        <div id="detail-progress-area">
+          <div id="detail-progress-row">
+            <span id="detail-progress-status">Descargando...</span>
+            <span id="detail-progress-percent">0%</span>
+          </div>
+          <div id="detail-progress-bar">
+            <div id="detail-progress-fill"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="main.js"></script>
+</body>
+
+</html>

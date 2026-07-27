@@ -1,0 +1,6 @@
+﻿/src-tauri/target/
+*.key
+*.key.pub
+node_modules/
+.DS_Store
+Thumbs.db

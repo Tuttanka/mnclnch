@@ -1,0 +1,44 @@
+{
+  "productName": "Chevere Tu Launcher",
+  "version": "1.0.0",
+  "identifier": "cheverestudios.launcher",
+  "build": {
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "withGlobalTauri": true,
+    "windows": [
+      {
+        "title": "Chevere tu Launcher",
+        "width": 900,
+        "height": 560,
+        "resizable": true,
+        "fullscreen": false,
+        "decorations": false,
+        "center": true
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ]
+  },
+  "plugins": {
+    "updater": {
+      "endpoints": [
+        "https://chevere-backend.onrender.com/updater/latest.json"
+      ],
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDUxNjMwQzg1M0Q2RUNEQUYKUldTdnpXNDloUXhqVWFxWmFuM2V2RUpyVFFaZ0daZVQxTXE0UVdyOHB1TmVaYll6QURJeDk2OFkK"
+    }
+  }
+}
