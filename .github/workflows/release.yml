@@ -11,6 +11,7 @@ permissions:
 jobs:
   release:
     runs-on: windows-latest
+
     steps:
       - name: Checkout chevere-launcher
         uses: actions/checkout@v4
@@ -31,6 +32,26 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
 
+      - name: Generate latest.json
+        shell: pwsh
+        run: |
+          $version = "${{ github.ref_name }}".TrimStart('v')
+          $exeUrl = "https://github.com/Tuttanka/mnclnch/releases/download/${{ github.ref_name }}/Chevere.Tu.Launcher_${version}_x64-setup.exe"
+          $sigPath = "src-tauri/target/release/bundle/nsis/Chevere Tu Launcher_${version}_x64-setup.exe.sig"
+          $sig = Get-Content $sigPath -Raw
+          $json = @{
+            version = $version
+            notes = "Nueva version"
+            pub_date = (Get-Date -Format "yyyy-MM-ddTHH:mm:ssZ")
+            platforms = @{
+              "windows-x86_64" = @{
+                url = $exeUrl
+                signature = $sig.Trim()
+              }
+            }
+          } | ConvertTo-Json -Depth 5
+          $json | Out-File -FilePath "latest.json" -Encoding utf8
+
       - name: Upload Release
         uses: softprops/action-gh-release@v2
         with:
@@ -38,6 +59,6 @@ jobs:
             src-tauri/target/release/bundle/**/*.exe
             src-tauri/target/release/bundle/**/*.msi
             src-tauri/target/release/bundle/**/*.sig
-            src-tauri/target/release/bundle/**/*.json
+            latest.json
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
