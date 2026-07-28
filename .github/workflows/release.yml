@@ -1,30 +1,23 @@
 name: Release
-
 on:
   push:
     tags:
       - "v*"
-
 permissions:
   contents: write
-
 jobs:
   release:
     runs-on: windows-latest
-
     steps:
       - name: Checkout chevere-launcher
         uses: actions/checkout@v4
         with:
           repository: Tuttanka/chevere-launcher
           token: ${{ secrets.LAUNCHER_TOKEN }}
-
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
-
       - name: Install Tauri CLI
         run: cargo install tauri-cli --version "^2"
-
       - name: Set version from tag
         shell: pwsh
         run: |
@@ -33,14 +26,12 @@ jobs:
           $json = Get-Content $configPath -Raw | ConvertFrom-Json
           $json.version = $version
           $json | ConvertTo-Json -Depth 10 | Out-File -FilePath $configPath -Encoding utf8
-
       - name: Build Tauri
         working-directory: src-tauri
         run: cargo tauri build
         env:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
-
       - name: Generate latest.json
         shell: pwsh
         run: |
@@ -60,7 +51,6 @@ jobs:
             }
           } | ConvertTo-Json -Depth 5
           $json | Out-File -FilePath "latest.json" -Encoding utf8
-
       - name: Upload Release
         uses: softprops/action-gh-release@v2
         with:
