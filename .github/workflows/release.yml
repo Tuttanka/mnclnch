@@ -37,8 +37,8 @@ jobs:
         run: |
           $version = "${{ github.ref_name }}".TrimStart('v')
           $exeUrl = "https://github.com/Tuttanka/mnclnch/releases/download/${{ github.ref_name }}/Chevere.Tu.Launcher_${version}_x64-setup.exe"
-          $sigPath = "src-tauri/target/release/bundle/nsis/Chevere Tu Launcher_${version}_x64-setup.exe.sig"
-          $sig = Get-Content $sigPath -Raw
+          $sigFile = Get-ChildItem -Path "src-tauri/target/release/bundle/nsis" -Filter "*.exe.sig" | Select-Object -First 1
+          $sig = Get-Content $sigFile.FullName -Raw
           $json = @{
             version = $version
             notes = "Nueva version"
