@@ -1,47 +1,64 @@
-name: Release Chevere Launcher
-
+name: Release
 on:
   push:
     tags:
       - "v*"
-
 permissions:
   contents: write
-
 jobs:
   release:
     runs-on: windows-latest
-
     steps:
-
-      - name: Checkout
+      - name: Checkout chevere-launcher
         uses: actions/checkout@v4
-
-
+        with:
+          repository: Tuttanka/chevere-launcher
+          token: ${{ secrets.LAUNCHER_TOKEN }}
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
-
-
       - name: Install Tauri CLI
         run: cargo install tauri-cli --version "^2"
-
-
+      - name: Set version from tag
+        shell: pwsh
+        run: |
+          $version = "${{ github.ref_name }}".TrimStart('v')
+          $configPath = "src-tauri/tauri.conf.json"
+          $json = Get-Content $configPath -Raw | ConvertFrom-Json
+          $json.version = $version
+          $json | ConvertTo-Json -Depth 10 | Out-File -FilePath $configPath -Encoding utf8
       - name: Build Tauri
         working-directory: src-tauri
         run: cargo tauri build
         env:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
-
-
+      - name: Generate latest.json
+        shell: pwsh
+        run: |
+          $version = "${{ github.ref_name }}".TrimStart('v')
+          $exeUrl = "https://github.com/Tuttanka/mnclnch/releases/download/${{ github.ref_name }}/Chevere.Tu.Launcher_${version}_x64-setup.exe"
+          $sigPath = "src-tauri/target/release/bundle/nsis/Chevere Tu Launcher_${version}_x64-setup.exe.sig"
+          $sig = Get-Content $sigPath -Raw
+          $json = @{
+            version = $version
+            notes = "Nueva version"
+            pub_date = (Get-Date -Format "yyyy-MM-ddTHH:mm:ssZ")
+            platforms = @{
+              "windows-x86_64" = @{
+                url = $exeUrl
+                signature = $sig.Trim()
+              }
+            }
+          } | ConvertTo-Json -Depth 5
+          $json | Out-File -FilePath "latest.json" -Encoding utf8
       - name: Upload Release
         uses: softprops/action-gh-release@v2
         with:
-          repository: Tuttanka/mnclnch
-          tag_name: ${{ github.ref_name }}
+          draft: false
           files: |
             src-tauri/target/release/bundle/**/*.exe
             src-tauri/target/release/bundle/**/*.msi
             src-tauri/target/release/bundle/**/*.sig
+            latest.json
         env:
-          GITHUB_TOKEN: ${{ secrets.MNCLNCH_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
