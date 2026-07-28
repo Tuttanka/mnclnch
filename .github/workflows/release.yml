@@ -25,6 +25,15 @@ jobs:
       - name: Install Tauri CLI
         run: cargo install tauri-cli --version "^2"
 
+      - name: Set version from tag
+        shell: pwsh
+        run: |
+          $version = "${{ github.ref_name }}".TrimStart('v')
+          $configPath = "src-tauri/tauri.conf.json"
+          $json = Get-Content $configPath -Raw | ConvertFrom-Json
+          $json.version = $version
+          $json | ConvertTo-Json -Depth 10 | Out-File -FilePath $configPath -Encoding utf8
+
       - name: Build Tauri
         working-directory: src-tauri
         run: cargo tauri build
@@ -55,6 +64,7 @@ jobs:
       - name: Upload Release
         uses: softprops/action-gh-release@v2
         with:
+          draft: false
           files: |
             src-tauri/target/release/bundle/**/*.exe
             src-tauri/target/release/bundle/**/*.msi
