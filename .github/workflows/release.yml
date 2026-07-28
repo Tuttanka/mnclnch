@@ -1,0 +1,47 @@
+name: Release Chevere Launcher
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+
+    steps:
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+
+      - name: Install Tauri CLI
+        run: cargo install tauri-cli --version "^2"
+
+
+      - name: Build Tauri
+        working-directory: src-tauri
+        run: cargo tauri build
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+
+
+      - name: Upload Release
+        uses: softprops/action-gh-release@v2
+        with:
+          repository: Tuttanka/mnclnch
+          tag_name: ${{ github.ref_name }}
+          files: |
+            src-tauri/target/release/bundle/**/*.exe
+            src-tauri/target/release/bundle/**/*.msi
+            src-tauri/target/release/bundle/**/*.sig
+        env:
+          GITHUB_TOKEN: ${{ secrets.MNCLNCH_TOKEN }}
