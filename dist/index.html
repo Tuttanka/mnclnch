@@ -162,25 +162,6 @@
       transform: none;
     }
 
-    #btn-premium {
-      background: rgba(255, 255, 255, 0.2);
-      backdrop-filter: blur(10px);
-      border: 1px solid rgba(255, 255, 255, 0.3);
-      color: rgba(255, 255, 255, 0.6);
-      cursor: not-allowed;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 2px;
-    }
-
-    .maintenance-tag {
-      font-size: 10px;
-      font-weight: 700;
-      color: #ffd080;
-      letter-spacing: 0.5px;
-    }
-
     #btn-nopremium {
       background: #5865F2;
       box-shadow: 0 4px 20px rgba(88, 101, 242, 0.5);
@@ -296,6 +277,122 @@
       margin-top: 4px;
     }
 
+    /* ============ ACCOUNT TYPE ============ */
+    #account-type-screen {
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 24px;
+      background-image: url('img/bg-login.png');
+      background-size: cover;
+      background-position: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .account-type-content {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 24px;
+      text-align: center;
+    }
+
+    .account-type-content h2 {
+      font-size: 28px;
+      font-weight: 900;
+      color: #fff;
+      letter-spacing: -0.5px;
+    }
+
+    .account-type-content p {
+      font-size: 15px;
+      color: rgba(255, 255, 255, 0.85);
+    }
+
+    .account-type-buttons {
+      display: flex;
+      gap: 16px;
+    }
+
+    #btn-choose-nopremium {
+      background: #5865F2;
+      box-shadow: 0 4px 20px rgba(88, 101, 242, 0.5);
+      min-width: 180px;
+    }
+
+    #btn-choose-premium {
+      background: rgba(255, 255, 255, 0.15);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      min-width: 180px;
+    }
+
+    /* ============ NICKNAME ============ */
+    #nickname-screen {
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 24px;
+      background-image: url('img/bg-login.png');
+      background-size: cover;
+      background-position: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .nickname-content {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+      text-align: center;
+    }
+
+    .nickname-content h2 {
+      font-size: 28px;
+      font-weight: 900;
+      color: #fff;
+      letter-spacing: -0.5px;
+    }
+
+    .nickname-content p {
+      font-size: 15px;
+      color: rgba(255, 255, 255, 0.85);
+    }
+
+    #nickname-input {
+      padding: 14px 20px;
+      border-radius: 50px;
+      border: none;
+      background: rgba(255, 255, 255, 0.95);
+      color: #1a1a2e;
+      font-size: 18px;
+      font-weight: 700;
+      width: 260px;
+      text-align: center;
+      outline: none;
+    }
+
+    #btn-save-nickname {
+      background: #5865F2;
+      box-shadow: 0 4px 20px rgba(88, 101, 242, 0.5);
+      min-width: 200px;
+    }
+
+    #nickname-status {
+      font-size: 13px;
+      color: rgba(255, 255, 255, 0.8);
+      min-height: 20px;
+    }
+
+    #nickname-status.error {
+      color: #ff9090;
+    }
+
     /* ============ UNAUTHORIZED ============ */
     #unauthorized-screen {
       flex-direction: column;
@@ -356,8 +453,6 @@
       overflow: hidden;
     }
 
-    /* Izquierda: skin + nombre */
-
     #side-left {
       position: absolute;
       left: 25px;
@@ -389,15 +484,9 @@
       overflow-wrap: break-word;
     }
 
-    #player-nick::before {
-      content: '"';
-    }
+    #player-nick::before { content: '"'; }
+    #player-nick::after { content: '"'; }
 
-    #player-nick::after {
-      content: '"';
-    }
-
-    /* Centro arriba: logo CHEVERE STUDEOS */
     #center-logo {
       position: absolute;
       top: 50px;
@@ -407,7 +496,6 @@
       align-items: center;
       justify-content: center;
       width: 100%;
-
     }
 
     #center-logo img {
@@ -416,7 +504,6 @@
       filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.5));
     }
 
-    /* Centro pantalla: logo.png */
     #center-stage-logo {
       position: absolute;
       top: 50%;
@@ -435,7 +522,6 @@
       filter: drop-shadow(0 4px 16px rgba(0, 0, 0, 0.6));
     }
 
-    /* Derecha: instancias */
     #side-right {
       position: absolute;
       right: 0;
@@ -446,9 +532,7 @@
       flex-direction: column;
       align-items: center;
       justify-content: flex-start;
-      /* Antes: center */
       padding: 120px 20px 20px;
-      /* Baja el botón desde arriba */
       gap: 12px;
     }
 
@@ -468,9 +552,7 @@
       padding: 4px 0;
     }
 
-    #instances-dropdown-btn .arrow {
-      font-size: 12px;
-    }
+    #instances-dropdown-btn .arrow { font-size: 12px; }
 
     #instances-panel {
       display: none;
@@ -480,12 +562,9 @@
       max-height: 300px;
       overflow-y: auto;
       margin-top: 10px;
-      /* Hace que las tarjetas aparezcan debajo del botón */
     }
 
-    #instances-panel.open {
-      display: flex;
-    }
+    #instances-panel.open { display: flex; }
 
     .instance-card {
       background: rgba(19, 33, 34, 0.88);
@@ -498,14 +577,11 @@
       transition: border-color 0.15s;
     }
 
-    .instance-card:hover {
-      border-color: rgba(255, 255, 255, 0.411);
-    }
+    .instance-card:hover { border-color: rgba(255, 255, 255, 0.411); }
 
     .instance-card img {
       width: 100%;
       height: 90px;
-      /* Antes: 1000px */
       object-fit: cover;
     }
 
@@ -516,53 +592,9 @@
       gap: 4px;
     }
 
-    .instance-card .name {
-      font-weight: 650;
-      font-size: 15px;
-      color: #fff;
-    }
+    .instance-card .name { font-weight: 650; font-size: 15px; color: #fff; }
+    .instance-card .meta { font-size: 10px; color: #888; }
 
-    .instance-card .meta {
-      font-size: 10px;
-      color: #888;
-    }
-
-    .instance-card .actions {
-      margin-top: 6px;
-      display: flex;
-      gap: 6px;
-    }
-
-    .instance-card button {
-      flex: 1;
-      padding: 6px;
-      border-radius: 5px;
-      border: none;
-      cursor: pointer;
-      font-weight: 700;
-      font-size: 11px;
-      color: #fff;
-    }
-
-    .btn-download {
-      background: #3b82f6;
-    }
-
-    .btn-repair {
-      background: #92400e;
-    }
-
-    .btn-play {
-      background: #15803d;
-    }
-
-    .instance-card .progress {
-      font-size: 10px;
-      color: #7dd3fc;
-      min-height: 12px;
-    }
-
-    /* Botones inferiores izquierda */
     #bottom-left-btns {
       position: absolute;
       bottom: 20px;
@@ -583,9 +615,7 @@
       transition: transform 0.1s, opacity 0.15s;
     }
 
-    .bottom-btn:hover {
-      transform: scale(1.08);
-    }
+    .bottom-btn:hover { transform: scale(1.08); }
 
     #btn-config {
       width: 40px;
@@ -603,7 +633,6 @@
       letter-spacing: 0.5px;
     }
 
-    /* ============ MINI MENU CONFIGURACION (RAM) ============ */
     #config-panel {
       position: absolute;
       bottom: 68px;
@@ -621,9 +650,7 @@
       z-index: 5;
     }
 
-    #config-panel.open {
-      display: flex;
-    }
+    #config-panel.open { display: flex; }
 
     #config-panel .config-title {
       font-size: 13px;
@@ -639,22 +666,10 @@
       justify-content: space-between;
     }
 
-    #config-panel .ram-label {
-      font-size: 12px;
-      color: #aaa;
-    }
+    #config-panel .ram-label { font-size: 12px; color: #aaa; }
+    #config-panel .ram-value { font-size: 13px; font-weight: 700; color: #2ec4d6; }
 
-    #config-panel .ram-value {
-      font-size: 13px;
-      font-weight: 700;
-      color: #2ec4d6;
-    }
-
-    #ram-slider {
-      width: 100%;
-      accent-color: #2ec4d6;
-      cursor: pointer;
-    }
+    #ram-slider { width: 100%; accent-color: #2ec4d6; cursor: pointer; }
 
     #config-panel .ram-minmax {
       display: flex;
@@ -663,7 +678,6 @@
       color: #666;
     }
 
-    /* ============ OVERLAY DETALLE INSTANCIA ============ */
     #detail-overlay {
       display: none;
       position: fixed;
@@ -675,9 +689,7 @@
       justify-content: center;
     }
 
-    #detail-overlay.open {
-      display: flex;
-    }
+    #detail-overlay.open { display: flex; }
 
     #detail-box {
       background: rgba(20, 20, 28, 0.97);
@@ -690,148 +702,66 @@
       box-shadow: 0 16px 48px rgba(0, 0, 0, 0.7);
     }
 
-    #detail-logo {
-      width: 100%;
-      height: 160px;
-      object-fit: cover;
-      display: block;
-    }
+    #detail-logo { width: 100%; height: 160px; object-fit: cover; display: block; }
+    #detail-logo-fallback { width: 100%; height: 160px; background: rgba(255,255,255,0.04); display: none; }
 
-    #detail-logo-fallback {
-      width: 100%;
-      height: 160px;
-      background: rgba(255, 255, 255, 0.04);
-      display: none;
-    }
+    #detail-body { padding: 20px 20px 24px; display: flex; flex-direction: column; gap: 14px; }
 
-    #detail-body {
-      padding: 20px 20px 24px;
-      display: flex;
-      flex-direction: column;
-      gap: 14px;
-    }
+    #detail-header { display: flex; align-items: flex-start; justify-content: space-between; }
 
-    #detail-header {
-      display: flex;
-      align-items: flex-start;
-      justify-content: space-between;
-    }
-
-    #detail-name {
-      font-size: 18px;
-      font-weight: 800;
-      color: #fff;
-      line-height: 1.2;
-      flex: 1;
-    }
+    #detail-name { font-size: 18px; font-weight: 800; color: #fff; line-height: 1.2; flex: 1; }
 
     #detail-close {
-      background: none;
-      border: none;
-      color: rgba(255, 255, 255, 0.4);
-      font-size: 20px;
-      cursor: pointer;
-      padding: 0 0 0 12px;
-      line-height: 1;
-      transition: color 0.15s;
+      background: none; border: none; color: rgba(255,255,255,0.4);
+      font-size: 20px; cursor: pointer; padding: 0 0 0 12px; line-height: 1; transition: color 0.15s;
     }
+    #detail-close:hover { color: #fff; }
 
-    #detail-close:hover {
-      color: #fff;
-    }
-
-    #detail-actions {
-      display: flex;
-      gap: 8px;
-    }
+    #detail-actions { display: flex; gap: 8px; }
 
     #detail-actions button {
-      flex: 1;
-      padding: 10px;
-      border-radius: 8px;
-      border: none;
-      cursor: pointer;
-      font-weight: 700;
-      font-size: 13px;
-      color: #fff;
-      transition: opacity 0.15s;
+      flex: 1; padding: 10px; border-radius: 8px; border: none;
+      cursor: pointer; font-weight: 700; font-size: 13px; color: #fff; transition: opacity 0.15s;
     }
+    #detail-actions button:hover { opacity: 0.85; }
+    #detail-actions button:disabled { opacity: 0.4; cursor: not-allowed; }
 
-    #detail-actions button:hover {
-      opacity: 0.85;
-    }
+    #detail-progress-area { display: none; flex-direction: column; gap: 6px; }
+    #detail-progress-area.show { display: flex; }
 
-    #detail-actions button:disabled {
-      opacity: 0.4;
-      cursor: not-allowed;
-    }
-
-    #detail-progress-area {
-      display: none;
-      flex-direction: column;
-      gap: 6px;
-    }
-
-    #detail-progress-area.show {
-      display: flex;
-    }
-
-    #detail-progress-status {
-      font-size: 12px;
-      color: rgba(255, 255, 255, 0.6);
-    }
+    #detail-progress-status { font-size: 12px; color: rgba(255,255,255,0.6); }
 
     #detail-progress-bar {
-      width: 100%;
-      height: 6px;
-      background: rgba(255, 255, 255, 0.08);
-      border-radius: 3px;
-      overflow: hidden;
+      width: 100%; height: 6px; background: rgba(255,255,255,0.08); border-radius: 3px; overflow: hidden;
     }
 
     #detail-progress-fill {
-      height: 100%;
-      background: #3b82f6;
-      border-radius: 3px;
-      width: 0%;
-      transition: width 0.2s;
+      height: 100%; background: #3b82f6; border-radius: 3px; width: 0%; transition: width 0.2s;
     }
 
-    #detail-progress-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-
-    #detail-progress-percent {
-      font-size: 11px;
-      color: #7dd3fc;
-      font-weight: 700;
-    }
+    #detail-progress-row { display: flex; justify-content: space-between; align-items: center; }
+    #detail-progress-percent { font-size: 11px; color: #7dd3fc; font-weight: 700; }
 
     #detail-update-badge {
-      display: none;
-      font-size: 10px;
-      font-weight: 700;
-      color: #fbbf24;
-      background: rgba(251, 191, 36, 0.12);
-      border: 1px solid rgba(251, 191, 36, 0.25);
-      border-radius: 20px;
-      padding: 2px 8px;
-      align-self: flex-start;
+      display: none; font-size: 10px; font-weight: 700; color: #fbbf24;
+      background: rgba(251,191,36,0.12); border: 1px solid rgba(251,191,36,0.25);
+      border-radius: 20px; padding: 2px 8px; align-self: flex-start;
     }
+    #detail-update-badge.show { display: block; }
 
-    #detail-update-badge.show {
-      display: block;
-    }
+    .btn-download { background: #3b82f6; }
+    .btn-repair { background: #92400e; }
+    .btn-play { background: #15803d; }
   </style>
 </head>
 
 <body>
 
-  <!-- BARRA DE TITULO PERSONALIZADA -->
+  <!-- BARRA DE TITULO -->
   <div id="titlebar" data-tauri-drag-region>
-    <span id="titlebar-title" data-tauri-drag-region><img src="img/logo.png" alt="" />Chevere Tu Launcher v1.0.0</span>
+    <span id="titlebar-title" data-tauri-drag-region>
+      <img src="img/logo.png" alt="" />Chevere Tu Launcher v1.0.10
+    </span>
     <div id="titlebar-buttons">
       <button id="titlebar-minimize" title="Minimizar">─</button>
       <button id="titlebar-maximize" title="Maximizar">☐</button>
@@ -845,12 +775,6 @@
       <h1 class="login-title">INICIE SESION<br>CON SU CUENTA</h1>
       <div class="login-buttons">
         <div class="login-btn-wrap">
-          <button id="btn-premium" class="login-btn" disabled>
-            Conecta con Microsoft
-            <span class="maintenance-tag">(MANTENIMIENTO)</span>
-          </button>
-        </div>
-        <div class="login-btn-wrap">
           <button id="btn-nopremium" class="login-btn">Conecta con Discord</button>
         </div>
       </div>
@@ -862,8 +786,7 @@
   <div id="discord-code-screen" class="screen">
     <div class="discord-code-content">
       <h2>CONECTANDO MEDIANTE DISCORD...</h2>
-      <p>ingrese el codigo que le envio el bot "BotChevereStudeos"<br>en su discord (<span
-          id="code-discord-username"></span>)</p>
+      <p>Ingresa el codigo que te envio el bot "BotChevereStudeos"<br>en tu Discord (<span id="code-discord-username"></span>)</p>
       <input id="code-input" placeholder="000000" maxlength="6" />
       <button id="btn-verify-code">Verificar</button>
       <div id="code-status"></div>
@@ -871,71 +794,76 @@
     </div>
   </div>
 
-  <!-- PANTALLA SIN AUTORIZACIÓN -->
+  <!-- PANTALLA ELEGIR TIPO DE CUENTA -->
+  <div id="account-type-screen" class="screen">
+    <div class="account-type-content">
+      <h2>COMO QUIERES JUGAR</h2>
+      <p>Elige el tipo de cuenta con la que ingresaras</p>
+      <div class="account-type-buttons">
+        <button id="btn-choose-nopremium" class="login-btn">No Premium</button>
+        <button id="btn-choose-premium" class="login-btn">Premium - Tengo Minecraft</button>
+      </div>
+      <div id="account-type-status" style="font-size:13px;color:rgba(255,255,255,0.8);min-height:20px;"></div>
+    </div>
+  </div>
+
+  <!-- PANTALLA INGRESAR NICKNAME -->
+  <div id="nickname-screen" class="screen">
+    <div class="nickname-content">
+      <h2>TU NICKNAME DE MINECRAFT</h2>
+      <p>Ingresa tu nombre de usuario exacto de Minecraft</p>
+      <input id="nickname-input" placeholder="Steve" maxlength="16" />
+      <button id="btn-save-nickname" class="login-btn">Entrar al Launcher</button>
+      <div id="nickname-status"></div>
+    </div>
+  </div>
+
+  <!-- PANTALLA SIN AUTORIZACION -->
   <div id="unauthorized-screen" class="screen">
     <h2>SIN AUTORIZACION</h2>
-    <p>Usted no se encuentra registrado en la whitelist. Pide al Administrador que te agregue en Discord.<br />
-      Iniciaste sesión con la cuenta <strong id="unauth-username"></strong>.
+    <p>No estas registrado en la whitelist. Pide al administrador que te agregue.<br />
+      Iniciaste sesion con la cuenta <strong id="unauth-username"></strong>.
     </p>
     <div class="unauth-hint">
-      Ve al servidor de Discord y comparte tu usuario de Minecraft en el canal correspondiente para que el admin te
-      agregue a la whitelist.
+      Ve al servidor de Discord y comparte tu usuario para que el admin te agregue a la whitelist.
     </div>
     <button id="btn-back-login">← Volver al inicio</button>
   </div>
 
   <!-- MENU PRINCIPAL -->
   <div id="main-screen" class="screen">
-
-    <!-- Izquierda: skin + username -->
     <div id="side-left">
       <img id="player-skin-img" src="" alt="skin" />
       <div id="player-nick">Steve</div>
     </div>
-
-    <!-- Centro arriba: logo CHEVERE STUDEOS -->
     <div id="center-logo">
       <img src="img/chevere-studeos.png" alt="Chevere Studeos" />
     </div>
-
-    <!-- Centro pantalla: logo.png -->
     <div id="center-stage-logo">
       <img src="img/logo.png" alt="Logo" />
     </div>
-
-    <!-- Derecha: instancias -->
     <div id="side-right">
       <button id="instances-dropdown-btn">
         INSTANCIAS <span class="arrow">▼</span>
       </button>
       <div id="instances-panel"></div>
     </div>
-
-    <!-- Mini menu configuracion (RAM) -->
     <div id="config-panel">
-      <div class="config-title">Configuración</div>
+      <div class="config-title">Configuracion</div>
       <div class="ram-row">
         <span class="ram-label">Memoria RAM asignada</span>
         <span class="ram-value" id="ram-value">4 GB</span>
       </div>
       <input type="range" id="ram-slider" min="1" max="16" step="1" value="4" />
       <div class="ram-minmax"><span>1 GB</span><span>16 GB</span></div>
-      <div class="config-title" style="margin-top:8px">Tamaño de ventana</div>
-      <select id="size-select" style="
-    width:100%; padding:6px 10px; border-radius:8px;
-    background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.12);
-    color:#fff; font-size:12px; cursor:pointer; outline:none;
-  "></select>
+      <div class="config-title" style="margin-top:8px">Tamano de ventana</div>
+      <select id="size-select" style="width:100%;padding:6px 10px;border-radius:8px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.12);color:#fff;font-size:12px;cursor:pointer;outline:none;"></select>
     </div>
-
-    <!-- Botones inferiores izquierda -->
     <div id="bottom-left-btns">
-      <button class="bottom-btn" id="btn-config" title="Configuración">⚙</button>
+      <button class="bottom-btn" id="btn-config" title="Configuracion">⚙</button>
       <button class="bottom-btn" id="btn-exit">SALIR</button>
     </div>
-
   </div>
-
 
   <!-- Overlay detalle de instancia -->
   <div id="detail-overlay">
@@ -947,7 +875,7 @@
           <div id="detail-name"></div>
           <button id="detail-close">✕</button>
         </div>
-        <span id="detail-update-badge">↑ Actualización disponible</span>
+        <span id="detail-update-badge">Actualizacion disponible</span>
         <div id="detail-actions"></div>
         <div id="detail-progress-area">
           <div id="detail-progress-row">

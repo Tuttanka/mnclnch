@@ -10,16 +10,12 @@ document.getElementById("titlebar-close").addEventListener("click", () => appWin
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Auto-actualización del launcher
-// Revisa al abrir si hay una versión nueva del PROGRAMA (no del contenido/mods).
-// Si hay, la descarga e instala sola, y reinicia el launcher.
 // ─────────────────────────────────────────────────────────────────────────────
 async function checkForUpdates() {
   try {
     const { check } = window.__TAURI__.updater;
     const { relaunch } = window.__TAURI__.process;
-
     const update = await check();
-
     if (update) {
       const overlay = document.createElement("div");
       overlay.style.cssText = `
@@ -36,10 +32,8 @@ async function checkForUpdates() {
         </div>
       `;
       document.body.appendChild(overlay);
-
       let downloaded = 0;
       let total = 0;
-
       await update.downloadAndInstall((event) => {
         if (event.event === "Started") {
           total = event.data.contentLength || 0;
@@ -54,12 +48,9 @@ async function checkForUpdates() {
           document.getElementById("update-progress").textContent = "Instalando...";
         }
       });
-
-      // Reinicia el launcher ya actualizado
       await relaunch();
     }
   } catch (e) {
-    // Si falla el chequeo (sin internet, backend caído, etc.) no bloqueamos el login
     console.warn("No se pudo revisar actualizaciones:", e);
   }
 }
@@ -67,7 +58,7 @@ async function checkForUpdates() {
 checkForUpdates();
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Config — lee config.json para saber la URL del backend
+// Config
 // ─────────────────────────────────────────────────────────────────────────────
 let BACKEND_URL = "http://localhost:8080";
 const configReady = fetch("config.json")
@@ -81,17 +72,13 @@ const configReady = fetch("config.json")
 const { invoke } = window.__TAURI__.core;
 const { open: openUrl } = window.__TAURI__.shell;
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Skin
-// ─────────────────────────────────────────────────────────────────────────────
 function getSkinUrl(username) {
   return `https://render.crafty.gg/2d/face/${username}`;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Referencias DOM — Login
+// Referencias DOM
 // ─────────────────────────────────────────────────────────────────────────────
-const btnPremium = document.getElementById("btn-premium");
 const btnNoPremium = document.getElementById("btn-nopremium");
 const loginStatus = document.getElementById("login-status");
 const codeInput = document.getElementById("code-input");
@@ -101,10 +88,12 @@ const codeDiscordUsername = document.getElementById("code-discord-username");
 const btnBackToLogin = document.getElementById("btn-back-to-login");
 const unauthUsername = document.getElementById("unauth-username");
 const btnBackLogin = document.getElementById("btn-back-login");
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Referencias DOM — Main
-// ─────────────────────────────────────────────────────────────────────────────
+const btnChooseNoPremium = document.getElementById("btn-choose-nopremium");
+const btnChoosePremium = document.getElementById("btn-choose-premium");
+const accountTypeStatus = document.getElementById("account-type-status");
+const nicknameInput = document.getElementById("nickname-input");
+const btnSaveNickname = document.getElementById("btn-save-nickname");
+const nicknameStatus = document.getElementById("nickname-status");
 const playerSkinImg = document.getElementById("player-skin-img");
 const playerNick = document.getElementById("player-nick");
 const instancesDropdownBtn = document.getElementById("instances-dropdown-btn");
@@ -114,10 +103,6 @@ const btnConfig = document.getElementById("btn-config");
 const btnExit = document.getElementById("btn-exit");
 const ramSlider = document.getElementById("ram-slider");
 const ramValue = document.getElementById("ram-value");
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Referencias DOM — Overlay detalle instancia
-// ─────────────────────────────────────────────────────────────────────────────
 const detailOverlay = document.getElementById("detail-overlay");
 const detailClose = document.getElementById("detail-close");
 const detailLogo = document.getElementById("detail-logo");
@@ -135,11 +120,13 @@ const detailProgressPct = document.getElementById("detail-progress-percent");
 let currentSessionId = null;
 let pollTimer = null;
 let msPollTimer = null;
+let instancesPollTimer = null;
 let dropdownOpen = false;
 let detailUnlisten = null;
-let launcherToken = null;   // JWT guardado en memoria (no localStorage)
+let launcherToken = null;
 let launcherUsername = null;
 let launcherAccType = null;
+let currentDiscordId = null;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Pantallas
@@ -156,7 +143,31 @@ function setCodeStatus(msg, isError = false) {
   codeStatus.textContent = msg;
   codeStatus.classList.toggle("error", isError);
 }
+function setNicknameStatus(msg, isError = false) {
+  nicknameStatus.textContent = msg;
+  nicknameStatus.classList.toggle("error", isError);
+}
 function setButtonsDisabled(d) { btnNoPremium.disabled = d; }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Timeout login (1 minuto)
+// ─────────────────────────────────────────────────────────────────────────────
+let loginTimeoutTimer = null;
+
+function startLoginTimeout() {
+  if (loginTimeoutTimer) clearTimeout(loginTimeoutTimer);
+  loginTimeoutTimer = setTimeout(() => {
+    stopPolling();
+    setStatus("Tiempo agotado. Intenta de nuevo.", true);
+    setButtonsDisabled(false);
+    showScreen("login-screen");
+  }, 1 * 60 * 1000);
+}
+
+function clearLoginTimeout() {
+  if (loginTimeoutTimer) clearTimeout(loginTimeoutTimer);
+  loginTimeoutTimer = null;
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Polling sesión Discord
@@ -174,6 +185,7 @@ function startPolling(sessionId) {
 
       if (data.status === "awaiting_discord_code") {
         stopPolling();
+        clearLoginTimeout();
         codeDiscordUsername.textContent = data.discord_username || "";
         setCodeStatus(""); codeInput.value = "";
         showScreen("discord-code-screen");
@@ -183,6 +195,7 @@ function startPolling(sessionId) {
 
       if (data.status === "not_whitelisted") {
         stopPolling();
+        clearLoginTimeout();
         unauthUsername.textContent = `"${data.discord_username}"`;
         showScreen("unauthorized-screen");
         return;
@@ -190,12 +203,16 @@ function startPolling(sessionId) {
 
       if (data.status === "done") {
         stopPolling();
-        onLoginSuccess(data.token, data.minecraft_username, data.account_type);
+        clearLoginTimeout();
+        launcherToken = data.token;
+        currentDiscordId = data.discord_id || null;
+        showScreen("account-type-screen");
         return;
       }
 
       if (data.status === "error") {
         stopPolling();
+        clearLoginTimeout();
         setStatus(data.message || "Error iniciando sesion.", true);
         setButtonsDisabled(false);
         showScreen("login-screen");
@@ -205,12 +222,49 @@ function startPolling(sessionId) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Polling instancias (cada 2 minutos)
+// ─────────────────────────────────────────────────────────────────────────────
+function startInstancesPolling() {
+  if (instancesPollTimer) clearInterval(instancesPollTimer);
+  instancesPollTimer = setInterval(async () => {
+    await configReady;
+    try {
+      const res = await fetch(`${BACKEND_URL}/instances`, {
+        headers: { "Authorization": `Bearer ${launcherToken}` }
+      });
+
+      if (res.status === 401) {
+        clearInterval(instancesPollTimer);
+        launcherToken = null;
+        launcherUsername = null;
+        setStatus("Tu acceso fue revocado.", true);
+        setButtonsDisabled(false);
+        showScreen("login-screen");
+        return;
+      }
+
+      if (!res.ok) return;
+
+      const instances = await res.json();
+      if (dropdownOpen) {
+        instancesPanel.innerHTML = "";
+        for (const inst of instances) {
+          const localVersion = await invoke("get_installed_version", { uniqueCode: inst.unique_code }).catch(() => null);
+          const isInstalled = localVersion !== null;
+          instancesPanel.appendChild(buildInstanceCard(inst, isInstalled, false));
+        }
+      }
+    } catch (_) { }
+  }, 2 * 60 * 1000);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Login Discord — código de 6 dígitos
 // ─────────────────────────────────────────────────────────────────────────────
 btnVerifyCode.addEventListener("click", async () => {
   await configReady;
   const code = codeInput.value.trim();
-  if (!code || code.length < 6) { setCodeStatus("Ingresa el código de 6 dígitos.", true); return; }
+  if (!code || code.length < 6) { setCodeStatus("Ingresa el codigo de 6 digitos.", true); return; }
 
   btnVerifyCode.disabled = true;
   setCodeStatus("Verificando...");
@@ -224,14 +278,18 @@ btnVerifyCode.addEventListener("click", async () => {
 
     if (res.ok) {
       const data = await fetch(`${BACKEND_URL}/auth/session/${currentSessionId}`).then(r => r.json());
-      if (data.status === "done") onLoginSuccess(data.token, data.minecraft_username, data.account_type);
+      if (data.status === "done") {
+        launcherToken = data.token;
+        currentDiscordId = data.discord_id || null;
+        showScreen("account-type-screen");
+      }
     } else if (res.status === 401) {
-      setCodeStatus("Código incorrecto. Intenta de nuevo.", true);
+      setCodeStatus("Codigo incorrecto. Intenta de nuevo.", true);
       codeInput.value = ""; codeInput.focus(); btnVerifyCode.disabled = false;
     } else if (res.status === 410) {
-      setCodeStatus("El código expiró. Vuelve a iniciar sesión.", true); btnVerifyCode.disabled = false;
+      setCodeStatus("El codigo expiro. Vuelve a iniciar sesion.", true); btnVerifyCode.disabled = false;
     } else if (res.status === 429) {
-      setCodeStatus("Demasiados intentos. Vuelve a iniciar sesión.", true); btnVerifyCode.disabled = false;
+      setCodeStatus("Demasiados intentos. Vuelve a iniciar sesion.", true); btnVerifyCode.disabled = false;
     } else {
       setCodeStatus("Error verificando. Intenta de nuevo.", true); btnVerifyCode.disabled = false;
     }
@@ -241,26 +299,126 @@ btnVerifyCode.addEventListener("click", async () => {
 });
 
 codeInput.addEventListener("keydown", e => { if (e.key === "Enter") btnVerifyCode.click(); });
-btnBackToLogin.addEventListener("click", () => { stopPolling(); setStatus(""); setButtonsDisabled(false); showScreen("login-screen"); });
-btnBackLogin.addEventListener("click", () => { setStatus(""); setButtonsDisabled(false); showScreen("login-screen"); });
+btnBackToLogin.addEventListener("click", () => {
+  stopPolling();
+  clearLoginTimeout();
+  setStatus("");
+  setButtonsDisabled(false);
+  showScreen("login-screen");
+});
+btnBackLogin.addEventListener("click", () => {
+  setStatus("");
+  setButtonsDisabled(false);
+  showScreen("login-screen");
+});
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Login Microsoft
+// Login Discord — botón inicial
 // ─────────────────────────────────────────────────────────────────────────────
-btnPremium.addEventListener("click", async () => {
+btnNoPremium.addEventListener("click", async () => {
   await configReady;
   setButtonsDisabled(true);
-  setStatus("Abriendo ventana de Microsoft...");
+  setStatus("Abriendo Discord para iniciar sesion...");
+  currentSessionId = crypto.randomUUID();
+  try {
+    const data = await fetch(`${BACKEND_URL}/auth/discord?session_id=${currentSessionId}`).then(r => r.json());
+    await openUrl(data.url);
+    setStatus("Completa el inicio de sesion en el navegador...");
+    startPolling(currentSessionId);
+    startLoginTimeout();
+  } catch (_) {
+    setStatus("No se pudo conectar al backend.", true);
+    setButtonsDisabled(false);
+  }
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Pantalla elección tipo de cuenta
+// ─────────────────────────────────────────────────────────────────────────────
+btnChooseNoPremium.addEventListener("click", async () => {
+  await configReady;
+  btnChooseNoPremium.disabled = true;
+  btnChoosePremium.disabled = true;
+  accountTypeStatus.textContent = "Verificando...";
+
+  try {
+    const res = await fetch(`${BACKEND_URL}/user_mc`, {
+      headers: { "Authorization": `Bearer ${launcherToken}` }
+    });
+    const data = await res.json();
+
+    if (data.minecraft_username) {
+      onLoginSuccess(launcherToken, data.minecraft_username, "no_premium");
+    } else {
+      accountTypeStatus.textContent = "";
+      btnChooseNoPremium.disabled = false;
+      btnChoosePremium.disabled = false;
+      showScreen("nickname-screen");
+    }
+  } catch (_) {
+    accountTypeStatus.textContent = "Error al verificar. Intenta de nuevo.";
+    btnChooseNoPremium.disabled = false;
+    btnChoosePremium.disabled = false;
+  }
+});
+
+btnChoosePremium.addEventListener("click", async () => {
+  await configReady;
+  btnChooseNoPremium.disabled = true;
+  btnChoosePremium.disabled = true;
+  accountTypeStatus.textContent = "Abriendo Microsoft...";
   currentSessionId = crypto.randomUUID();
   try {
     await invoke("start_microsoft_login", { sessionId: currentSessionId });
     startMsPolling(currentSessionId);
   } catch (e) {
-    setStatus("No se pudo iniciar el login con Microsoft: " + e, true);
-    setButtonsDisabled(false);
+    accountTypeStatus.textContent = "No se pudo iniciar el login con Microsoft.";
+    btnChooseNoPremium.disabled = false;
+    btnChoosePremium.disabled = false;
   }
 });
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Guardar nickname (primera vez No Premium)
+// ─────────────────────────────────────────────────────────────────────────────
+btnSaveNickname.addEventListener("click", async () => {
+  await configReady;
+  const nick = nicknameInput.value.trim();
+  if (!nick || nick.length < 2) {
+    setNicknameStatus("Ingresa un nickname valido.", true);
+    return;
+  }
+
+  btnSaveNickname.disabled = true;
+  setNicknameStatus("Guardando...");
+
+  try {
+    const res = await fetch(`${BACKEND_URL}/user_mc`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${launcherToken}`
+      },
+      body: JSON.stringify({ minecraft_username: nick })
+    });
+
+    if (res.ok) {
+      onLoginSuccess(launcherToken, nick, "no_premium");
+    } else {
+      setNicknameStatus("Error al guardar. Intenta de nuevo.", true);
+      btnSaveNickname.disabled = false;
+    }
+  } catch (_) {
+    setNicknameStatus("No se pudo conectar al backend.", true);
+    btnSaveNickname.disabled = false;
+  }
+});
+
+nicknameInput.addEventListener("keydown", e => { if (e.key === "Enter") btnSaveNickname.click(); });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Login Microsoft
+// ─────────────────────────────────────────────────────────────────────────────
 function startMsPolling(sessionId) {
   stopMsPolling();
   msPollTimer = setInterval(async () => {
@@ -285,36 +443,17 @@ function startMsPolling(sessionId) {
           }
         } catch (_) { }
       }
-      setStatus(msg || "Error iniciando sesion con Microsoft.", true);
-      setButtonsDisabled(false);
+      accountTypeStatus.textContent = msg || "Error iniciando sesion con Microsoft.";
+      btnChooseNoPremium.disabled = false;
+      btnChoosePremium.disabled = false;
     }
   }, 1500);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Login Discord — botón inicial
-// ─────────────────────────────────────────────────────────────────────────────
-btnNoPremium.addEventListener("click", async () => {
-  await configReady;
-  setButtonsDisabled(true);
-  setStatus("Abriendo Discord para iniciar sesion...");
-  currentSessionId = crypto.randomUUID();
-  try {
-    const data = await fetch(`${BACKEND_URL}/auth/discord?session_id=${currentSessionId}`).then(r => r.json());
-    await openUrl(data.url);
-    setStatus("Completa el inicio de sesion en el navegador...");
-    startPolling(currentSessionId);
-  } catch (_) {
-    setStatus("No se pudo conectar al backend.", true);
-    setButtonsDisabled(false);
-  }
-});
-
-// ─────────────────────────────────────────────────────────────────────────────
 // Login exitoso
 // ─────────────────────────────────────────────────────────────────────────────
 function onLoginSuccess(token, username, accountType) {
-  // Guarda en memoria — nunca en localStorage (seguridad)
   launcherToken = token;
   launcherUsername = username;
   launcherAccType = accountType;
@@ -329,6 +468,7 @@ function onLoginSuccess(token, username, accountType) {
   playerNick.textContent = username;
 
   loadInstances();
+  startInstancesPolling(); // inicia el polling cada 2 minutos
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -342,8 +482,6 @@ instancesDropdownBtn.addEventListener("click", () => {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Cargar instancias
-// El JS llama directo al backend con fetch (no invoke).
-// Para cada instancia pide al Rust local la versión instalada y compara.
 // ─────────────────────────────────────────────────────────────────────────────
 async function loadInstances() {
   await configReady;
@@ -351,9 +489,21 @@ async function loadInstances() {
 
   let instances = [];
   try {
-    instances = await fetch(`${BACKEND_URL}/instances`, {
+    const res = await fetch(`${BACKEND_URL}/instances`, {
       headers: { "Authorization": `Bearer ${launcherToken}` }
-    }).then(r => r.json());
+    });
+
+    if (res.status === 401) {
+      if (instancesPollTimer) clearInterval(instancesPollTimer);
+      launcherToken = null;
+      launcherUsername = null;
+      setStatus("Tu acceso fue revocado.", true);
+      setButtonsDisabled(false);
+      showScreen("login-screen");
+      return;
+    }
+
+    instances = await res.json();
   } catch (e) {
     instancesPanel.innerHTML = `<p style='color:#f87171;font-size:11px;padding:4px'>Error al cargar instancias</p>`;
     return;
@@ -366,15 +516,12 @@ async function loadInstances() {
 
   instancesPanel.innerHTML = "";
   for (const inst of instances) {
-    // null = no instalada | string = versión instalada localmente
     const localVersion = await invoke("get_installed_version", { uniqueCode: inst.unique_code }).catch(() => null);
     const isInstalled = localVersion !== null;
-    const needsUpdate = isInstalled && localVersion !== inst.mrpack_version;
-    instancesPanel.appendChild(buildInstanceCard(inst, isInstalled, needsUpdate));
+    instancesPanel.appendChild(buildInstanceCard(inst, isInstalled, false));
   }
 }
 
-// Tarjeta compacta en el dropdown — click abre el overlay de detalle
 function buildInstanceCard(inst, isInstalled, needsUpdate) {
   const card = document.createElement("div");
   card.className = "instance-card";
@@ -382,7 +529,7 @@ function buildInstanceCard(inst, isInstalled, needsUpdate) {
     <img src="${inst.image_url || ""}" onerror="this.style.display='none'" />
     <div class="body">
       <div class="name">${inst.name}</div>
-      <div class="meta">${inst.minecraft_version} · ${inst.loader}${needsUpdate ? " · <span style='color:#fbbf24'>↑ update</span>" : ""}</div>
+      <div class="meta">${inst.minecraft_version} · ${inst.loader}</div>
     </div>
   `;
   card.addEventListener("click", () => openDetail(inst, isInstalled, needsUpdate));
@@ -415,22 +562,12 @@ detailOverlay.addEventListener("click", e => { if (e.target === detailOverlay) c
 
 function renderDetailActions(inst, isInstalled, needsUpdate) {
   detailActions.innerHTML = "";
-
   if (!isInstalled) {
-    // Sin instalar — solo Descargar
     addBtn("btn-download", "Descargar", () => doDownload(inst));
-
-  } else if (needsUpdate) {
-    // Instalada pero hay versión nueva
-    addBtn("btn-download", "Actualizar", () => doDownload(inst));
-    addBtn("btn-play", "Jugar (versión anterior)", () => doLaunch(inst));
-
   } else {
-    // Instalada y al día
     addBtn("btn-repair", "Reparar", () => doDownload(inst));
-    addBtn("btn-play", "▶ Jugar", () => doLaunch(inst));
+    addBtn("btn-play", "Jugar", () => doLaunch(inst));
   }
-
   function addBtn(cls, label, onClick) {
     const b = document.createElement("button");
     b.className = cls; b.textContent = label; b.onclick = onClick;
@@ -439,22 +576,15 @@ function renderDetailActions(inst, isInstalled, needsUpdate) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Descarga / actualización
-// Llama al comando Rust download_mrpack que:
-//   1. Borra la carpeta vieja de la instancia
-//   2. Descarga el .mrpack desde Dropbox (streaming con progreso)
-//   3. Extrae overrides/ → carpeta de la instancia
-//   4. Escribe version.txt con mrpack_version
+// Descarga
 // ─────────────────────────────────────────────────────────────────────────────
 async function doDownload(inst) {
-  // Desactivar botones durante la descarga
   detailActions.querySelectorAll("button").forEach(b => b.disabled = true);
   detailProgressArea.classList.add("show");
   detailProgressStatus.textContent = "Conectando...";
   detailProgressFill.style.width = "0%";
   detailProgressPct.textContent = "0%";
 
-  // Escuchar progreso desde Rust
   detailUnlisten = await window.__TAURI__.event.listen("download-progress", e => {
     if (e.payload.unique_code !== inst.unique_code) return;
     const pct = Math.max(0, Math.min(100, e.payload.percent ?? 0));
@@ -467,29 +597,27 @@ async function doDownload(inst) {
 
   try {
     await invoke("download_mrpack", {
-      uniqueCode:      inst.unique_code,
-      mrpackUrl:       inst.mrpack_url,
-      mrpackVersion:   inst.mrpack_version,
+      uniqueCode:       inst.unique_code,
+      mrpackUrl:        inst.mrpack_url,
+      mrpackVersion:    "",
       minecraftVersion: inst.minecraft_version,
-      loader:          inst.loader,
-      loaderVersion:   inst.loader_version ?? "",
+      loader:           inst.loader,
+      loaderVersion:    inst.loader_version ?? "",
     });
 
-    // Éxito — actualizar UI
-    detailProgressStatus.textContent = "✓ Instalada";
+    detailProgressStatus.textContent = "Instalada";
     detailProgressFill.style.width = "100%";
     detailProgressPct.textContent = "100%";
     detailUpdateBadge.classList.remove("show");
 
     setTimeout(() => {
       detailProgressArea.classList.remove("show");
-      renderDetailActions(inst, true, false); // ya instalada, sin update
+      renderDetailActions(inst, true, false);
     }, 800);
 
   } catch (err) {
     detailProgressStatus.textContent = `Error: ${err}`;
     detailProgressFill.style.width = "0%";
-    // Rehabilitar botones para que pueda reintentar
     detailActions.querySelectorAll("button").forEach(b => b.disabled = false);
   } finally {
     if (detailUnlisten) { detailUnlisten(); detailUnlisten = null; }
@@ -517,7 +645,7 @@ async function doLaunch(inst) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Configuración (RAM)
+// Configuración RAM
 // ─────────────────────────────────────────────────────────────────────────────
 const RAM_KEY = "launcher_ram_gb";
 const savedRam = parseInt(localStorage.getItem(RAM_KEY), 10);
@@ -534,14 +662,13 @@ ramSlider.addEventListener("input", () => {
 // ─────────────────────────────────────────────────────────────────────────────
 btnConfig.addEventListener("click", () => configPanel.classList.toggle("open"));
 
-// ── Tamaño de ventana ──────────────────────────────────────────────────────
 const SIZE_KEY = "launcher_window_size";
 const SIZES = [
-  { label: "1200 × 700",  w: 1200, h: 700  },
-  { label: "1280 × 720",  w: 1280, h: 720  },
-  { label: "1280 × 800",  w: 1280, h: 800  },
-  { label: "1366 × 768",  w: 1366, h: 768  },
-  { label: "1400 × 800",  w: 1400, h: 800  },
+  { label: "1200 x 700", w: 1200, h: 700 },
+  { label: "1280 x 720", w: 1280, h: 720 },
+  { label: "1280 x 800", w: 1280, h: 800 },
+  { label: "1366 x 768", w: 1366, h: 768 },
+  { label: "1400 x 800", w: 1400, h: 800 },
 ];
 
 const savedSize = localStorage.getItem(SIZE_KEY);
@@ -559,17 +686,13 @@ SIZES.forEach((s, i) => {
 
 async function applySize(idx) {
   const s = SIZES[idx];
-  const win = appWindow;
-  await win.setSize(new window.__TAURI__.dpi.LogicalSize(s.w, s.h));
-  await win.center();
+  await appWindow.setSize(new window.__TAURI__.dpi.LogicalSize(s.w, s.h));
+  await appWindow.center();
   localStorage.setItem(SIZE_KEY, s.label);
 }
 
-// Aplicar tamaño guardado al arrancar
 applySize(currentSizeIdx);
 sizeSelect.addEventListener("change", () => applySize(parseInt(sizeSelect.value)));
-
-
 
 document.addEventListener("click", e => {
   if (configPanel.classList.contains("open") &&
@@ -582,7 +705,7 @@ document.addEventListener("click", e => {
 btnExit.addEventListener("click", async () => { await invoke("exit_app"); });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Seguridad — deshabilitar devtools en producción
+// Seguridad
 // ─────────────────────────────────────────────────────────────────────────────
 document.addEventListener("contextmenu", e => e.preventDefault());
 document.addEventListener("keydown", e => {
