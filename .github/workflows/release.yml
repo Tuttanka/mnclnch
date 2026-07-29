@@ -1,23 +1,30 @@
 name: Release
+
 on:
   push:
     tags:
       - "v*"
+
 permissions:
   contents: write
+
 jobs:
   release:
     runs-on: windows-latest
+
     steps:
       - name: Checkout chevere-launcher
         uses: actions/checkout@v4
         with:
           repository: Tuttanka/chevere-launcher
           token: ${{ secrets.LAUNCHER_TOKEN }}
+
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
+
       - name: Install Tauri CLI
         run: cargo install tauri-cli --version "^2"
+
       - name: Set version from tag
         shell: pwsh
         run: |
@@ -26,30 +33,33 @@ jobs:
           $json = Get-Content $configPath -Raw | ConvertFrom-Json
           $json.version = $version
           $json | ConvertTo-Json -Depth 10 | Out-File -FilePath $configPath -Encoding utf8
+
       - name: Build Tauri
         working-directory: src-tauri
         run: cargo tauri build
         env:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+
       - name: Generate latest.json
         shell: pwsh
         run: |
           $version = "${{ github.ref_name }}".TrimStart('v')
-          $exeUrl = "https://github.com/Tuttanka/mnclnch/releases/download/${{ github.ref_name }}/Chevere.Tu.Launcher_${version}_x64_en-US.msi"
-          $sigPath = Get-ChildItem "src-tauri/target/release/bundle/msi/*.sig" | Select-Object -First 1 -ExpandProperty FullName
+          $exeUrl = "https://github.com/Tuttanka/mnclnch/releases/download/${{ github.ref_name }}/Chevere.Tu.Launcher_${version}_x64-setup.exe"
+          $sigPath = Get-ChildItem "src-tauri/target/release/bundle/nsis/*.sig" | Select-Object -First 1 -ExpandProperty FullName
           $sig = Get-Content $sigPath -Raw
-            $json = @{
+          $json = @{
             version = $version
             notes = "Nueva version"
             pub_date = (Get-Date -Format "yyyy-MM-ddTHH:mm:ssZ")
             platforms = @{
-            "windows-x86_64" = @{
-            url = $exeUrl
-            signature = $sig.Trim()
+              "windows-x86_64" = @{
+                url = $exeUrl
+                signature = $sig.Trim()
               }
-              }
-              } | ConvertTo-Json -Depth 5
-            $json | Out-File -FilePath "latest.json" -Encoding utf8
+            }
+          } | ConvertTo-Json -Depth 5
+          $json | Out-File -FilePath "latest.json" -Encoding utf8
+
       - name: Upload Release
         uses: softprops/action-gh-release@v2
         with:
@@ -61,3 +71,4 @@ jobs:
             latest.json
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          
