@@ -35,26 +35,21 @@ jobs:
         shell: pwsh
         run: |
           $version = "${{ github.ref_name }}".TrimStart('v')
-          $exeUrl = "https://github.com/Tuttanka/mnclnch/releases/download/${{ github.ref_name }}/Chevere.Tu.Launcher_${version}_x64-setup.exe"
-          $sigFile = Get-ChildItem -Path "src-tauri/target/release/bundle" -Recurse -Filter "*setup.exe.sig" | Select-Object -First 1
-          if (-not $sigFile) {
-            Write-Host "No se encontro el .sig, listando todo el bundle:"
-            Get-ChildItem -Path "src-tauri/target/release/bundle" -Recurse | ForEach-Object { Write-Host $_.FullName }
-            exit 1
-          }
-          $sig = Get-Content $sigFile.FullName -Raw
-          $json = @{
+          $exeUrl = "https://github.com/Tuttanka/mnclnch/releases/download/${{ github.ref_name }}/Chevere.Tu.Launcher_${version}_x64_en-US.msi"
+          $sigPath = Get-ChildItem "src-tauri/target/release/bundle/msi/*.sig" | Select-Object -First 1 -ExpandProperty FullName
+          $sig = Get-Content $sigPath -Raw
+            $json = @{
             version = $version
             notes = "Nueva version"
             pub_date = (Get-Date -Format "yyyy-MM-ddTHH:mm:ssZ")
             platforms = @{
-              "windows-x86_64" = @{
-                url = $exeUrl
-                signature = $sig.Trim()
+            "windows-x86_64" = @{
+            url = $exeUrl
+            signature = $sig.Trim()
               }
-            }
-          } | ConvertTo-Json -Depth 5
-          $json | Out-File -FilePath "latest.json" -Encoding utf8
+              }
+              } | ConvertTo-Json -Depth 5
+            $json | Out-File -FilePath "latest.json" -Encoding utf8
       - name: Upload Release
         uses: softprops/action-gh-release@v2
         with:
