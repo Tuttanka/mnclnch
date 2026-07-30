@@ -58,6 +58,34 @@ async function checkForUpdates() {
 checkForUpdates();
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Auto-login con sesión guardada
+// ─────────────────────────────────────────────────────────────────────────────
+async function tryAutoLogin() {
+  await configReady;
+  const raw = localStorage.getItem(SESSION_KEY);
+  if (!raw) return;
+
+  let saved;
+  try { saved = JSON.parse(raw); } catch (_) { localStorage.removeItem(SESSION_KEY); return; }
+  if (!saved.token || !saved.username) { localStorage.removeItem(SESSION_KEY); return; }
+
+  try {
+    const res = await fetch(`${BACKEND_URL}/instances`, {
+      headers: { "Authorization": `Bearer ${saved.token}` }
+    });
+    if (res.ok) {
+      onLoginSuccess(saved.token, saved.username, saved.accountType);
+    } else {
+      localStorage.removeItem(SESSION_KEY);
+    }
+  } catch (_) {
+    // Sin conexion: no se puede validar, se deja la pantalla de login normal.
+  }
+}
+
+tryAutoLogin();
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Config
 // ─────────────────────────────────────────────────────────────────────────────
 let BACKEND_URL = "http://localhost:8080";
@@ -127,6 +155,7 @@ let launcherToken = null;
 let launcherUsername = null;
 let launcherAccType = null;
 let currentDiscordId = null;
+const SESSION_KEY = "launcher_session";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Pantallas
@@ -237,6 +266,7 @@ function startInstancesPolling() {
         clearInterval(instancesPollTimer);
         launcherToken = null;
         launcherUsername = null;
+        localStorage.removeItem(SESSION_KEY);
         setStatus("Tu acceso fue revocado.", true);
         setButtonsDisabled(false);
         showScreen("login-screen");
@@ -382,7 +412,7 @@ btnChoosePremium.addEventListener("click", async () => {
       showMsDeviceCodeScreen(user_code, verification_uri);
     });
 
-    await invoke("start_microsoft_login", { sessionId: currentSessionId });
+    await invoke("start_microsoft_login", { sessionId: currentSessionId, discordId: currentDiscordId });
     startMsPolling(currentSessionId);
   } catch (e) {
     accountTypeStatus.textContent = "No se pudo iniciar el login con Microsoft.";
@@ -407,9 +437,9 @@ function showMsDeviceCodeScreen(userCode, verificationUri) {
     font-family:-apple-system,'Segoe UI',sans-serif;
   `;
   overlay.innerHTML = `
-    <div style="font-size:13px;color:rgba(255,255,255,0.5);text-transform:uppercase;letter-spacing:2px;">Login Premium — Microsoft</div>
+    <div style="font-size:13px;color:rgba(255,255,255,0.5);text-transform:uppercase;letter-spacing:2px;">Inicio de sesion con Microsoft</div>
     <div style="font-size:15px;color:rgba(255,255,255,0.85);text-align:center;line-height:1.6;max-width:340px;">
-      Ve a esta dirección en tu navegador e ingresa el código:
+      Abre este enlace en tu navegador y escribe el codigo que aparece abajo.
     </div>
     <a href="#" id="ms-open-url" style="
       font-size:14px; font-weight:700; color:#60a5fa;
@@ -422,7 +452,7 @@ function showMsDeviceCodeScreen(userCode, verificationUri) {
       padding:18px 40px;
       display:flex; flex-direction:column; align-items:center; gap:6px;
     ">
-      <div style="font-size:11px;color:rgba(255,255,255,0.4);letter-spacing:1px;text-transform:uppercase;">Código</div>
+      <div style="font-size:11px;color:rgba(255,255,255,0.4);letter-spacing:1px;text-transform:uppercase;">Codigo</div>
       <div id="ms-user-code" style="
         font-size:32px; font-weight:900; letter-spacing:8px; color:#fff;
         font-family:monospace;
@@ -432,9 +462,9 @@ function showMsDeviceCodeScreen(userCode, verificationUri) {
       background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.15);
       color:#fff; border-radius:50px; padding:8px 24px; font-size:13px;
       cursor:pointer; transition:background 0.15s;
-    ">📋 Copiar código</button>
+    ">Copiar codigo</button>
     <div style="font-size:12px;color:rgba(255,255,255,0.35);text-align:center;">
-      Esperando que completes el login en Microsoft...
+      Esperando a que termines el inicio de sesion en Microsoft
     </div>
     <button id="ms-cancel-login" style="
       background:none; border:none; color:rgba(255,255,255,0.35);
@@ -452,10 +482,10 @@ function showMsDeviceCodeScreen(userCode, verificationUri) {
   // Copiar código
   document.getElementById("ms-copy-code").addEventListener("click", async () => {
     await navigator.clipboard.writeText(userCode);
-    document.getElementById("ms-copy-code").textContent = "✓ Copiado!";
+    document.getElementById("ms-copy-code").textContent = "Codigo copiado";
     setTimeout(() => {
       const btn = document.getElementById("ms-copy-code");
-      if (btn) btn.textContent = "📋 Copiar código";
+      if (btn) btn.textContent = "Copiar codigo";
     }, 2000);
   });
 
@@ -573,6 +603,8 @@ function onLoginSuccess(token, username, accountType) {
   launcherUsername = username;
   launcherAccType = accountType;
 
+  localStorage.setItem(SESSION_KEY, JSON.stringify({ token, username, accountType }));
+
   showScreen("main-screen");
 
   playerSkinImg.src = getSkinUrl(username);
@@ -612,6 +644,7 @@ async function loadInstances() {
       if (instancesPollTimer) clearInterval(instancesPollTimer);
       launcherToken = null;
       launcherUsername = null;
+      localStorage.removeItem(SESSION_KEY);
       setStatus("Tu acceso fue revocado.", true);
       setButtonsDisabled(false);
       showScreen("login-screen");

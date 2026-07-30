@@ -964,7 +964,7 @@ async fn launch_minecraft(
 // ─────────────────────────────────────────────────────────────────────────────
 
 #[tauri::command]
-async fn start_microsoft_login(app: AppHandle, session_id: String) -> Result<(), String> {
+async fn start_microsoft_login(app: AppHandle, session_id: String, discord_id: Option<String>) -> Result<(), String> {
     let sessions = app.state::<Arc<MsSessions>>();
     sessions.0.lock().unwrap().insert(session_id.clone(), MsSessionStatus::Pending);
 
@@ -981,7 +981,7 @@ async fn start_microsoft_login(app: AppHandle, session_id: String) -> Result<(),
     let sessions_clone = Arc::clone(&*sessions);
     let app_clone = app.clone();
     tokio::spawn(async move {
-        let status = match do_microsoft_login(&app_clone, &session_id, &backend_url).await {
+        let status = match do_microsoft_login(&app_clone, &session_id, &backend_url, discord_id.as_deref()).await {
             Ok((token, username)) => MsSessionStatus::Done { token, minecraft_username: username },
             Err(e) => MsSessionStatus::Error { message: e },
         };
@@ -997,12 +997,12 @@ fn poll_microsoft_login(app: AppHandle, session_id: String) -> MsSessionStatus {
     status
 }
 
-async fn do_microsoft_login(app: &AppHandle, session_id: &str, backend_url: &str) -> Result<(String, String), String> {
+async fn do_microsoft_login(app: &AppHandle, session_id: &str, backend_url: &str, discord_id: Option<&str>) -> Result<(String, String), String> {
     use minecraft_msa_auth::MinecraftAuthorizationFlow;
     use oauth2::{AuthUrl, ClientId, DeviceAuthorizationUrl, TokenUrl, basic::BasicClient};
 
     let client = BasicClient::new(
-        ClientId::new("6cd90ab7-e6b5-4f24-99b2-addb4ff8b7f8".to_string()),
+        ClientId::new("00000000402b5328".to_string()),
         None,
         AuthUrl::new("https://login.microsoftonline.com/consumers/oauth2/v2.0/authorize".to_string())
             .map_err(|e| e.to_string())?,
@@ -1035,7 +1035,26 @@ async fn do_microsoft_login(app: &AppHandle, session_id: &str, backend_url: &str
     let ms_token = client
         .exchange_device_access_token(&details)
         .request_async(async_http_client, tokio::time::sleep, None)
-        .await.map_err(|e| e.to_string())?;
+        .await
+        .map_err(|e| {
+            // El Display de oauth2::RequestTokenError es muy pobre (ej: "Server returned
+            // error response") y oculta el código de error real que manda Microsoft.
+            // Usamos Debug para sacar el detalle y lo traducimos a algo entendible.
+            let debug = format!("{e:?}");
+            if debug.contains("expired_token") {
+                "El código expiró antes de que confirmaras el login. Intenta de nuevo.".to_string()
+            } else if debug.contains("authorization_declined") {
+                "Cancelaste el inicio de sesión con Microsoft.".to_string()
+            } else if debug.contains("bad_verification_code") {
+                "Código de verificación inválido. Intenta de nuevo.".to_string()
+            } else if debug.contains("invalid_client") || debug.contains("unauthorized_client") {
+                "La app de Microsoft usada por el launcher no está autorizada (invalid_client). Hay que revisar el Client ID/registro en Azure.".to_string()
+            } else if debug.contains("invalid_grant") {
+                "La sesión de login con Microsoft ya no es válida. Intenta de nuevo.".to_string()
+            } else {
+                format!("Error de Microsoft al obtener el token: {debug}")
+            }
+        })?;
 
     let mc_token = mc_flow
         .exchange_microsoft_token(ms_token.access_token().secret())
@@ -1046,7 +1065,10 @@ async fn do_microsoft_login(app: &AppHandle, session_id: &str, backend_url: &str
 
     let resp = http
         .post(format!("{backend_url}/auth/microsoft/verify"))
-        .json(&serde_json::json!({ "minecraft_access_token": mc_token.access_token() }))
+        .json(&serde_json::json!({
+            "minecraft_access_token": mc_token.access_token(),
+            "discord_id": discord_id,
+        }))
         .send().await.map_err(|e| format!("Error contactando el backend: {e}"))?;
 
     if resp.status() == 403 {
