@@ -33,7 +33,13 @@ jobs:
           $json = Get-Content $configPath -Raw | ConvertFrom-Json
           $json.version = $version
           $json | ConvertTo-Json -Depth 10 | Out-File -FilePath $configPath -Encoding utf8
-
+        - name: Configure NSIS
+        shell: pwsh
+        run: |
+          $configPath = "src-tauri/tauri.conf.json"
+          $json = Get-Content $configPath -Raw | ConvertFrom-Json
+          $json.bundle | Add-Member -NotePropertyName "nsis" -NotePropertyValue @{installerMode="currentUser"} -Force
+          $json | ConvertTo-Json -Depth 10 | Out-File -FilePath $configPath -Encoding utf8
       - name: Build Tauri
         working-directory: src-tauri
         run: cargo tauri build
