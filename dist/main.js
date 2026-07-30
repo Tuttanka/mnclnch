@@ -150,7 +150,7 @@ function setNicknameStatus(msg, isError = false) {
 function setButtonsDisabled(d) { btnNoPremium.disabled = d; }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Timeout login (1 minuto)
+// Timeout login (20 segundos)
 // ─────────────────────────────────────────────────────────────────────────────
 let loginTimeoutTimer = null;
 
@@ -161,7 +161,7 @@ function startLoginTimeout() {
     setStatus("Tiempo agotado. Intenta de nuevo.", true);
     setButtonsDisabled(false);
     showScreen("login-screen");
-  }, 1 * 60 * 1000);
+  }, 20 * 1000);
 }
 
 function clearLoginTimeout() {
