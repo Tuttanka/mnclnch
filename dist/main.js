@@ -384,13 +384,23 @@ btnChoosePremium.addEventListener("click", async () => {
 btnSaveNickname.addEventListener("click", async () => {
   await configReady;
   const nick = nicknameInput.value.trim();
-  if (!nick || nick.length < 2) {
-    setNicknameStatus("Ingresa un nickname valido.", true);
+
+  // Validación local
+  if (!nick || nick.length < 3) {
+    setNicknameStatus("El nickname debe tener al menos 3 caracteres.", true);
+    return;
+  }
+  if (nick.length > 16) {
+    setNicknameStatus("El nickname no puede tener mas de 16 caracteres.", true);
+    return;
+  }
+  if (!/^[a-zA-Z0-9_]+$/.test(nick)) {
+    setNicknameStatus("Solo se permiten letras, numeros y guion bajo.", true);
     return;
   }
 
   btnSaveNickname.disabled = true;
-  setNicknameStatus("Guardando...");
+  setNicknameStatus("Verificando nombre...");
 
   try {
     const res = await fetch(`${BACKEND_URL}/user_mc`, {
@@ -403,9 +413,16 @@ btnSaveNickname.addEventListener("click", async () => {
     });
 
     if (res.ok) {
+      setNicknameStatus("¡Listo!");
       onLoginSuccess(launcherToken, nick, "no_premium");
     } else {
-      setNicknameStatus("Error al guardar. Intenta de nuevo.", true);
+      let msg = "Error al guardar. Intenta de nuevo.";
+      try {
+        const data = await res.json();
+        if (data.error) msg = data.error;
+      } catch (_) {}
+
+      setNicknameStatus(msg, true);
       btnSaveNickname.disabled = false;
     }
   } catch (_) {

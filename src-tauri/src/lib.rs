@@ -541,13 +541,37 @@ async fn ensure_fabric(
 ) -> Result<(String, Vec<PathBuf>), String> {
     emit(app, unique_code, "fabric", 0, "Descargando Fabric...");
 
+    // Intentar con la versión pedida; si falla, usar la más reciente disponible
     let meta_url = format!(
         "https://meta.fabricmc.net/v2/versions/loader/{}/{}/profile/json",
         mc_version, loader_version
     );
 
-    let meta: FabricLoaderMeta = fetch_json(client, &meta_url).await
-        .map_err(|_| format!("No se encontró Fabric {} para MC {}", loader_version, mc_version))?;
+    let meta: FabricLoaderMeta = match fetch_json(client, &meta_url).await {
+        Ok(m) => m,
+        Err(_) => {
+            emit(app, unique_code, "fabric", 0, "Buscando versión de Fabric compatible...");
+            #[derive(Deserialize)]
+            struct LoaderEntry { loader: LoaderVer }
+            #[derive(Deserialize)]
+            struct LoaderVer { version: String }
+
+            let list_url = format!("https://meta.fabricmc.net/v2/versions/loader/{}", mc_version);
+            let loaders: Vec<LoaderEntry> = fetch_json(client, &list_url).await
+                .map_err(|_| format!("No hay versiones de Fabric disponibles para MC {}", mc_version))?;
+
+            let latest_version = loaders.first()
+                .ok_or_else(|| format!("No hay versiones de Fabric para MC {}", mc_version))?
+                .loader.version.clone();
+
+            let fallback_url = format!(
+                "https://meta.fabricmc.net/v2/versions/loader/{}/{}/profile/json",
+                mc_version, latest_version
+            );
+            fetch_json(client, &fallback_url).await
+                .map_err(|_| format!("No se pudo descargar Fabric para MC {}", mc_version))?
+        }
+    };
 
     let main_class = meta.launcher_meta.main_class.client.clone();
     let lib_dir = libraries_dir(app);
@@ -796,6 +820,10 @@ async fn download_mrpack(
     loader: String,           // "fabric" | "forge" | "neoforge" | "quilt"
     loader_version: String,   // versión del loader (ej: "0.16.9" para Fabric)
 ) -> Result<(), String> {
+    // Crear carpeta instances desde el inicio para que siempre exista
+    let instances_root = data_dir(&app).join("instances");
+    std::fs::create_dir_all(&instances_root).map_err(|e| e.to_string())?;
+
     let client = reqwest::Client::builder()
         .user_agent("ChevereTuLauncher/1.0")
         .build()

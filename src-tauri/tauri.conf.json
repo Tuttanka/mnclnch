@@ -1,7 +1,7 @@
 ﻿{
   "productName": "Chevere Tu Launcher",
   "version": "1.0.0",
-  "identifier": "cheverestudios.launcher",
+  "identifier": "cheverestudeos",
   "build": {
     "frontendDist": "../dist"
   },

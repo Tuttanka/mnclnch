@@ -678,6 +678,53 @@
       color: #666;
     }
 
+    /* ── Tamaño de ventana ── */
+    .size-select-wrapper {
+      position: relative;
+      width: 100%;
+    }
+
+    .size-select-wrapper::after {
+      content: '▾';
+      position: absolute;
+      right: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: #2ec4d6;
+      font-size: 11px;
+      pointer-events: none;
+    }
+
+    #size-select {
+      width: 100%;
+      padding: 7px 28px 7px 12px;
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      color: #fff;
+      font-size: 12px;
+      font-family: inherit;
+      cursor: pointer;
+      outline: none;
+      appearance: none;
+      -webkit-appearance: none;
+      transition: border-color 0.15s, background 0.15s;
+    }
+
+    #size-select:hover {
+      background: rgba(255, 255, 255, 0.1);
+      border-color: rgba(46, 196, 214, 0.5);
+    }
+
+    #size-select:focus {
+      border-color: #2ec4d6;
+    }
+
+    #size-select option {
+      background: #1a1a26;
+      color: #eee;
+    }
+
     #detail-overlay {
       display: none;
       position: fixed;
@@ -760,7 +807,7 @@
   <!-- BARRA DE TITULO -->
   <div id="titlebar" data-tauri-drag-region>
     <span id="titlebar-title" data-tauri-drag-region>
-      <img src="img/logo.png" alt="" />Chevere Tu Launcher v1.0.20
+      <img src="img/logo.png" alt="" />Chevere Tu Launcher v1.0.21
     </span>
     <div id="titlebar-buttons">
       <button id="titlebar-minimize" title="Minimizar">─</button>
@@ -857,7 +904,9 @@
       <input type="range" id="ram-slider" min="1" max="16" step="1" value="4" />
       <div class="ram-minmax"><span>1 GB</span><span>16 GB</span></div>
       <div class="config-title" style="margin-top:8px">Tamano de ventana</div>
-      <select id="size-select" style="width:100%;padding:6px 10px;border-radius:8px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.12);color:#fff;font-size:12px;cursor:pointer;outline:none;"></select>
+      <div class="size-select-wrapper">
+        <select id="size-select"></select>
+      </div>
     </div>
     <div id="bottom-left-btns">
       <button class="bottom-btn" id="btn-config" title="Configuracion">⚙</button>
