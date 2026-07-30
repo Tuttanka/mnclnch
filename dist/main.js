@@ -235,6 +235,7 @@ function startPolling(sessionId) {
         clearLoginTimeout();
         launcherToken = data.token;
         currentDiscordId = data.discord_id || null;
+        accountTypeStatus.textContent = "";
         showScreen("account-type-screen");
         return;
       }
@@ -311,6 +312,7 @@ btnVerifyCode.addEventListener("click", async () => {
       if (data.status === "done") {
         launcherToken = data.token;
         currentDiscordId = data.discord_id || null;
+        accountTypeStatus.textContent = "";
         showScreen("account-type-screen");
       }
     } else if (res.status === 401) {
