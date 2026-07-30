@@ -975,7 +975,7 @@ async fn start_microsoft_login(app: AppHandle, session_id: String) -> Result<(),
         serde_json::from_str::<serde_json::Value>(&cfg)
             .ok()
             .and_then(|v| v["backend_url"].as_str().map(|s| s.to_string()))
-            .unwrap_or_else(|| "http://localhost:8080".to_string())
+            .unwrap_or_else(|| "https://chevere-backend.onrender.com".to_string())
     };
 
     let sessions_clone = Arc::clone(&*sessions);
