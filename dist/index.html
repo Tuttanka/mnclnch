@@ -387,10 +387,21 @@
       font-size: 13px;
       color: rgba(255, 255, 255, 0.8);
       min-height: 20px;
+      max-width: 320px;
+      text-align: center;
+      line-height: 1.4;
     }
 
     #nickname-status.error {
-      color: #ff9090;
+      display: inline-block;
+      background: rgba(220, 38, 38, 0.18);
+      border: 1px solid rgba(248, 113, 113, 0.5);
+      color: #fca5a5;
+      font-size: 13px;
+      font-weight: 600;
+      padding: 8px 16px;
+      border-radius: 50px;
+      backdrop-filter: blur(4px);
     }
 
     /* ============ UNAUTHORIZED ============ */
@@ -807,7 +818,7 @@
   <!-- BARRA DE TITULO -->
   <div id="titlebar" data-tauri-drag-region>
     <span id="titlebar-title" data-tauri-drag-region>
-      <img src="img/logo.png" alt="" />Chevere Tu Launcher v1.0.21
+      <img src="img/logo.png" alt="" />Chevere Tu Launcher v1.0.22
     </span>
     <div id="titlebar-buttons">
       <button id="titlebar-minimize" title="Minimizar">─</button>

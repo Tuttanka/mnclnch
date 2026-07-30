@@ -366,9 +366,16 @@ btnChoosePremium.addEventListener("click", async () => {
   await configReady;
   btnChooseNoPremium.disabled = true;
   btnChoosePremium.disabled = true;
-  accountTypeStatus.textContent = "Abriendo Microsoft...";
+  accountTypeStatus.textContent = "Conectando con Microsoft...";
   currentSessionId = crypto.randomUUID();
   try {
+    // Escuchar el evento con el código de dispositivo ANTES de invocar
+    const unlistenDeviceCode = await window.__TAURI__.event.listen("ms-device-code", async (e) => {
+      unlistenDeviceCode();
+      const { user_code, verification_uri } = e.payload;
+      showMsDeviceCodeScreen(user_code, verification_uri);
+    });
+
     await invoke("start_microsoft_login", { sessionId: currentSessionId });
     startMsPolling(currentSessionId);
   } catch (e) {
@@ -377,6 +384,89 @@ btnChoosePremium.addEventListener("click", async () => {
     btnChoosePremium.disabled = false;
   }
 });
+
+function showMsDeviceCodeScreen(userCode, verificationUri) {
+  // Crear overlay con instrucciones del device code
+  const existing = document.getElementById("ms-device-overlay");
+  if (existing) existing.remove();
+
+  const overlay = document.createElement("div");
+  overlay.id = "ms-device-overlay";
+  overlay.style.cssText = `
+    position:fixed; inset:0; z-index:500;
+    background:rgba(0,0,0,0.88);
+    backdrop-filter:blur(8px);
+    display:flex; flex-direction:column;
+    align-items:center; justify-content:center; gap:20px;
+    font-family:-apple-system,'Segoe UI',sans-serif;
+  `;
+  overlay.innerHTML = `
+    <div style="font-size:13px;color:rgba(255,255,255,0.5);text-transform:uppercase;letter-spacing:2px;">Login Premium — Microsoft</div>
+    <div style="font-size:15px;color:rgba(255,255,255,0.85);text-align:center;line-height:1.6;max-width:340px;">
+      Ve a esta dirección en tu navegador e ingresa el código:
+    </div>
+    <a href="#" id="ms-open-url" style="
+      font-size:14px; font-weight:700; color:#60a5fa;
+      text-decoration:none; border-bottom:1px solid rgba(96,165,250,0.4); padding-bottom:2px;
+    ">${verificationUri}</a>
+    <div style="
+      background:rgba(255,255,255,0.07);
+      border:1px solid rgba(255,255,255,0.15);
+      border-radius:12px;
+      padding:18px 40px;
+      display:flex; flex-direction:column; align-items:center; gap:6px;
+    ">
+      <div style="font-size:11px;color:rgba(255,255,255,0.4);letter-spacing:1px;text-transform:uppercase;">Código</div>
+      <div id="ms-user-code" style="
+        font-size:32px; font-weight:900; letter-spacing:8px; color:#fff;
+        font-family:monospace;
+      ">${userCode}</div>
+    </div>
+    <button id="ms-copy-code" style="
+      background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.15);
+      color:#fff; border-radius:50px; padding:8px 24px; font-size:13px;
+      cursor:pointer; transition:background 0.15s;
+    ">📋 Copiar código</button>
+    <div style="font-size:12px;color:rgba(255,255,255,0.35);text-align:center;">
+      Esperando que completes el login en Microsoft...
+    </div>
+    <button id="ms-cancel-login" style="
+      background:none; border:none; color:rgba(255,255,255,0.35);
+      font-size:12px; cursor:pointer; text-decoration:underline; margin-top:4px;
+    ">Cancelar</button>
+  `;
+  document.body.appendChild(overlay);
+
+  // Abrir URL en navegador
+  document.getElementById("ms-open-url").addEventListener("click", async (e) => {
+    e.preventDefault();
+    await openUrl(verificationUri);
+  });
+
+  // Copiar código
+  document.getElementById("ms-copy-code").addEventListener("click", async () => {
+    await navigator.clipboard.writeText(userCode);
+    document.getElementById("ms-copy-code").textContent = "✓ Copiado!";
+    setTimeout(() => {
+      const btn = document.getElementById("ms-copy-code");
+      if (btn) btn.textContent = "📋 Copiar código";
+    }, 2000);
+  });
+
+  // Cancelar
+  document.getElementById("ms-cancel-login").addEventListener("click", () => {
+    overlay.remove();
+    stopMsPolling();
+    btnChooseNoPremium.disabled = false;
+    btnChoosePremium.disabled = false;
+    accountTypeStatus.textContent = "";
+  });
+}
+
+function closeMsDeviceOverlay() {
+  const el = document.getElementById("ms-device-overlay");
+  if (el) el.remove();
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Guardar nickname (primera vez No Premium)
@@ -444,11 +534,13 @@ function startMsPolling(sessionId) {
     if (data.status === "pending") return;
     if (data.status === "done") {
       stopMsPolling();
+      closeMsDeviceOverlay();
       onLoginSuccess(data.token, data.minecraftUsername || data.minecraft_username, "premium");
       return;
     }
     if (data.status === "error") {
       stopMsPolling();
+      closeMsDeviceOverlay();
       const msg = data.message || "";
       const jsonStart = msg.indexOf("{");
       if (jsonStart !== -1) {

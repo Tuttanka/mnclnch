@@ -979,8 +979,9 @@ async fn start_microsoft_login(app: AppHandle, session_id: String) -> Result<(),
     };
 
     let sessions_clone = Arc::clone(&*sessions);
+    let app_clone = app.clone();
     tokio::spawn(async move {
-        let status = match do_microsoft_login(&session_id, &backend_url).await {
+        let status = match do_microsoft_login(&app_clone, &session_id, &backend_url).await {
             Ok((token, username)) => MsSessionStatus::Done { token, minecraft_username: username },
             Err(e) => MsSessionStatus::Error { message: e },
         };
@@ -996,7 +997,7 @@ fn poll_microsoft_login(app: AppHandle, session_id: String) -> MsSessionStatus {
     status
 }
 
-async fn do_microsoft_login(session_id: &str, backend_url: &str) -> Result<(String, String), String> {
+async fn do_microsoft_login(app: &AppHandle, session_id: &str, backend_url: &str) -> Result<(String, String), String> {
     use minecraft_msa_auth::MinecraftAuthorizationFlow;
     use oauth2::{AuthUrl, ClientId, DeviceAuthorizationUrl, TokenUrl, basic::BasicClient};
 
@@ -1021,6 +1022,15 @@ async fn do_microsoft_login(session_id: &str, backend_url: &str) -> Result<(Stri
         .exchange_device_code().map_err(|e| e.to_string())?
         .add_scope(Scope::new("XboxLive.signin offline_access".to_string()))
         .request_async(async_http_client).await.map_err(|e| e.to_string())?;
+
+    // Emitir el código y URL al frontend para que el usuario sepa qué hacer
+    use oauth2::DeviceAuthorizationResponse;
+    let user_code = details.user_code().secret().to_string();
+    let verification_uri = details.verification_uri().to_string();
+    let _ = app.emit("ms-device-code", serde_json::json!({
+        "user_code": user_code,
+        "verification_uri": verification_uri,
+    }));
 
     let ms_token = client
         .exchange_device_access_token(&details)
