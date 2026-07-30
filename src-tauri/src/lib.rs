@@ -1002,7 +1002,7 @@ async fn do_microsoft_login(app: &AppHandle, session_id: &str, backend_url: &str
     use oauth2::{AuthUrl, ClientId, DeviceAuthorizationUrl, TokenUrl, basic::BasicClient};
 
     let client = BasicClient::new(
-        ClientId::new("00000000402b5328".to_string()),
+        ClientId::new("6cd90ab7-e6b5-4f24-99b2-addb4ff8b7f8".to_string()),
         None,
         AuthUrl::new("https://login.microsoftonline.com/consumers/oauth2/v2.0/authorize".to_string())
             .map_err(|e| e.to_string())?,
