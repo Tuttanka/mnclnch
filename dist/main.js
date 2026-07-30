@@ -150,7 +150,7 @@ function setNicknameStatus(msg, isError = false) {
 function setButtonsDisabled(d) { btnNoPremium.disabled = d; }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Timeout login (10 segundos)
+// Timeout login (5 segundos)
 // ─────────────────────────────────────────────────────────────────────────────
 let loginTimeoutTimer = null;
 
@@ -161,7 +161,7 @@ function startLoginTimeout() {
     setStatus("Tiempo agotado. Intenta de nuevo.", true);
     setButtonsDisabled(false);
     showScreen("login-screen");
-  }, 10 * 1000);
+  }, 5 * 1000);
 }
 
 function clearLoginTimeout() {
@@ -304,11 +304,17 @@ btnBackToLogin.addEventListener("click", () => {
   clearLoginTimeout();
   setStatus("");
   setButtonsDisabled(false);
+  btnVerifyCode.disabled = false;
+  codeInput.value = "";
+  setCodeStatus("");
   showScreen("login-screen");
 });
 btnBackLogin.addEventListener("click", () => {
   setStatus("");
   setButtonsDisabled(false);
+  btnVerifyCode.disabled = false;
+  codeInput.value = "";
+  setCodeStatus("");
   showScreen("login-screen");
 });
 
