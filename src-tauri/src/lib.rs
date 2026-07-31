@@ -1058,7 +1058,8 @@ async fn do_microsoft_login(app: &AppHandle, session_id: &str, backend_url: &str
 
     let mc_token = mc_flow
         .exchange_microsoft_token(ms_token.access_token().secret())
-        .await.map_err(|e| e.to_string())?;
+        .await
+        .map_err(|e| format!("Error validando la cuenta con Xbox/Minecraft: {e:?}"))?;
 
     #[derive(Deserialize)]
     struct BackendResp { token: String, minecraft_username: String }
