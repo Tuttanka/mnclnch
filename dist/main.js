@@ -105,6 +105,100 @@ function getSkinUrl(username) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Staff y Creaciones (editar acá para agregar/quitar gente o proyectos)
+// ─────────────────────────────────────────────────────────────────────────────
+
+// Orden de categorias en la pantalla de Staff
+const STAFF_CATEGORIES = ["Owner", "Constructor", "Modelador", "Config"];
+
+const STAFF_MEMBERS = [
+  { name: "PilarG9", role: "Owner" },
+  { name: "ZailenZ", role: "Config" },
+  { name: "KeyXw", role: "Config" },
+  // Agregá mas gente acá, con el mismo formato:
+  // { name: "NombreDeMinecraft", role: "Owner" | "Constructor" | "Modelador" | "Config" },
+];
+
+const CREACIONES = [
+  // Agregá o editá proyectos acá. "img" es opcional (ruta dentro de dist/img/).
+  // { name: "Nombre del proyecto", date: "Fecha", img: "img/creaciones/archivo.png" },
+];
+
+function renderStaff() {
+  const container = document.getElementById("staff-groups");
+  container.innerHTML = "";
+
+  for (const category of STAFF_CATEGORIES) {
+    const members = STAFF_MEMBERS.filter(m => m.role === category);
+    if (!members.length) continue;
+
+    const group = document.createElement("div");
+    group.className = "staff-category";
+    group.innerHTML = `<div class="staff-category-title">${category}</div>`;
+
+    const cards = document.createElement("div");
+    cards.className = "staff-cards";
+    for (const m of members) {
+      const card = document.createElement("div");
+      card.className = "staff-card";
+      card.innerHTML = `
+        <img src="https://mc-heads.net/avatar/${m.name}/100" alt="${m.name}" />
+        <div class="staff-name">${m.name}</div>
+        <div class="staff-role">${m.role}</div>
+      `;
+      cards.appendChild(card);
+    }
+    group.appendChild(cards);
+    container.appendChild(group);
+  }
+
+  if (!STAFF_MEMBERS.length) {
+    container.innerHTML = `<p style="color:rgba(255,255,255,0.5);font-size:13px;">Todavia no hay miembros cargados.</p>`;
+  }
+}
+
+function renderCreaciones() {
+  const container = document.getElementById("creaciones-timeline");
+  container.innerHTML = "";
+
+  if (!CREACIONES.length) {
+    container.innerHTML = `<p style="color:rgba(255,255,255,0.5);font-size:13px;">Todavia no hay creaciones cargadas.</p>`;
+    return;
+  }
+
+  const track = document.createElement("div");
+  track.className = "creacion-track";
+  CREACIONES.forEach((c, i) => {
+    const item = document.createElement("div");
+    item.className = `creacion-item ${i % 2 === 0 ? "top" : "bottom"}`;
+    item.innerHTML = `
+      ${c.img ? `<img src="${c.img}" alt="${c.name}" />` : ""}
+      <div class="creacion-name">${c.name}</div>
+      <div class="creacion-date">${c.date || ""}</div>
+      <div class="dot"></div>
+    `;
+    track.appendChild(item);
+  });
+  container.appendChild(track);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Navegacion del sidebar (Inicio / Staff / Creaciones)
+// ─────────────────────────────────────────────────────────────────────────────
+document.querySelectorAll(".nav-btn[data-panel]").forEach(btn => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll(".nav-btn[data-panel]").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+
+    document.querySelectorAll(".content-panel").forEach(p => p.classList.remove("active"));
+    document.getElementById(`panel-${btn.dataset.panel}`).classList.add("active");
+  });
+});
+
+renderStaff();
+renderCreaciones();
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Referencias DOM
 // ─────────────────────────────────────────────────────────────────────────────
 const btnNoPremium = document.getElementById("btn-nopremium");

@@ -457,80 +457,281 @@
     /* ============ MAIN MENU ============ */
     #main-screen {
       position: relative;
-      flex-direction: column;
+      flex-direction: row;
+      align-items: stretch;
       background-image: url('img/bg-stage.png');
       background-size: cover;
       background-position: center top;
       overflow: hidden;
     }
+    #main-screen::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(90deg, rgba(8,10,14,0.55) 0%, rgba(8,10,14,0.15) 30%, rgba(8,10,14,0.15) 100%);
+      pointer-events: none;
+      z-index: 1;
+    }
 
     #side-left {
-      position: absolute;
-      left: 25px;
-      top: 0;
-      bottom: 0;
-      width: 190px;
+      position: relative;
+      z-index: 3;
+      flex: 0 0 220px;
       display: flex;
       flex-direction: column;
       align-items: center;
-      justify-content: center;
-      gap: 15px;
-      transform: translateY(-250px);
+      padding: 40px 20px 24px;
+      gap: 14px;
     }
 
     #player-skin-img {
-      width: 120px;
-      height: 120px;
+      width: 110px;
+      height: 110px;
       image-rendering: pixelated;
       object-fit: contain;
     }
 
     #player-nick {
-      width: 150px;
-      font-size: 20px;
+      width: 100%;
+      font-size: 19px;
       font-weight: 700;
       color: #fff;
       text-align: center;
       text-shadow: 0 2px 6px rgba(0, 0, 0, 0.8);
       overflow-wrap: break-word;
+      margin-bottom: 10px;
     }
 
     #player-nick::before { content: '"'; }
     #player-nick::after { content: '"'; }
 
-    #center-logo {
-      position: absolute;
-      top: 50px;
-      left: 50%;
-      transform: translateX(-50%);
+    #main-nav {
       display: flex;
+      flex-direction: column;
       align-items: center;
-      justify-content: center;
+      gap: 14px;
       width: 100%;
     }
 
+    .nav-btn {
+      background: none;
+      border: none;
+      color: rgba(255, 255, 255, 0.7);
+      font-size: 17px;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+      cursor: pointer;
+      padding: 4px 0;
+      transition: color 0.15s, transform 0.1s;
+      text-shadow: 0 2px 6px rgba(0, 0, 0, 0.7);
+    }
+
+    .nav-btn:hover { color: #fff; transform: translateX(2px); }
+
+    .nav-btn.active {
+      color: #fff;
+      background: rgba(255, 255, 255, 0.08);
+      border-radius: 6px;
+      padding: 4px 14px;
+    }
+
+    .nav-divider {
+      width: 60%;
+      height: 1px;
+      background: rgba(255, 255, 255, 0.15);
+      margin: 6px 0;
+    }
+
+    .nav-btn-exit { color: rgba(255, 130, 130, 0.85); }
+    .nav-btn-exit:hover { color: #ff8888; }
+
+    #content-stage {
+      position: relative;
+      z-index: 2;
+      flex: 1;
+      min-width: 0;
+      padding: 40px 220px 40px 20px;
+      overflow-y: auto;
+    }
+
+    .content-panel { display: none; }
+    .content-panel.active { display: block; }
+
+    #center-logo {
+      display: flex;
+      justify-content: center;
+      margin-bottom: 24px;
+    }
+
     #center-logo img {
-      height: 120px;
+      height: 100px;
       object-fit: contain;
       filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.5));
     }
 
-    #center-stage-logo {
+    .home-text {
+      max-width: 560px;
+      margin: 0 auto 20px;
+      background: rgba(20, 20, 28, 0.6);
+      backdrop-filter: blur(6px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 10px;
+      padding: 16px 20px;
+      color: rgba(255, 255, 255, 0.85);
+      font-size: 14px;
+      line-height: 1.6;
+      text-align: center;
+    }
+
+    .home-mascot-row {
+      display: flex;
+      align-items: center;
+      gap: 18px;
+      max-width: 560px;
+      margin: 0 auto;
+    }
+
+    .home-mascot-img {
+      width: 90px;
+      height: 90px;
+      object-fit: contain;
+      flex-shrink: 0;
+      filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.5));
+    }
+
+    .home-mascot-row .home-text { margin: 0; text-align: left; }
+
+    .panel-title {
+      color: #fff;
+      font-size: 22px;
+      font-weight: 800;
+      letter-spacing: 0.5px;
+      text-shadow: 0 2px 6px rgba(0, 0, 0, 0.7);
+      margin: 0 0 22px;
+    }
+
+    /* ── Staff ── */
+    .staff-category { margin-bottom: 28px; }
+
+    .staff-category-title {
+      color: #2ec4d6;
+      font-size: 13px;
+      font-weight: 800;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      margin-bottom: 12px;
+    }
+
+    .staff-cards {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 14px;
+    }
+
+    .staff-card {
+      width: 110px;
+      background: rgba(20, 20, 28, 0.6);
+      backdrop-filter: blur(6px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 10px;
+      padding: 12px 8px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      transition: transform 0.12s, border-color 0.12s;
+    }
+
+    .staff-card:hover {
+      transform: translateY(-3px);
+      border-color: rgba(46, 196, 214, 0.5);
+    }
+
+    .staff-card img {
+      width: 56px;
+      height: 56px;
+      image-rendering: pixelated;
+      border-radius: 6px;
+    }
+
+    .staff-card .staff-name {
+      color: #fff;
+      font-size: 13px;
+      font-weight: 700;
+      text-align: center;
+    }
+
+    .staff-card .staff-role {
+      color: rgba(255, 255, 255, 0.55);
+      font-size: 11px;
+      text-align: center;
+    }
+
+    /* ── Creaciones ── */
+    #creaciones-timeline {
+      position: relative;
+      padding: 40px 10px;
+    }
+
+    #creaciones-timeline::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: 50%;
+      height: 1px;
+      background: rgba(255, 255, 255, 0.2);
+    }
+
+    .creacion-track {
+      display: flex;
+      gap: 40px;
+      overflow-x: auto;
+      padding-bottom: 10px;
+    }
+
+    .creacion-item {
+      flex: 0 0 140px;
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+    }
+
+    .creacion-item.top { justify-content: flex-end; padding-bottom: 46px; }
+    .creacion-item.bottom { justify-content: flex-start; padding-top: 46px; }
+
+    .creacion-item .dot {
       position: absolute;
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      pointer-events: none;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #2ec4d6;
+      box-shadow: 0 0 0 4px rgba(46, 196, 214, 0.2);
     }
 
-    #center-stage-logo img {
-      max-width: 200px;
-      max-height: 340px;
+    .creacion-item img {
+      width: 90px;
+      height: 90px;
       object-fit: contain;
-      filter: drop-shadow(0 4px 16px rgba(0, 0, 0, 0.6));
+      filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.5));
+      margin-bottom: 6px;
+    }
+
+    .creacion-item .creacion-name {
+      color: #fff;
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .creacion-item .creacion-date {
+      color: rgba(255, 255, 255, 0.5);
+      font-size: 11px;
+      margin-top: 2px;
     }
 
     #side-right {
@@ -543,8 +744,9 @@
       flex-direction: column;
       align-items: center;
       justify-content: flex-start;
-      padding: 120px 20px 20px;
+      padding: 40px 20px 20px;
       gap: 12px;
+      z-index: 4;
     }
 
     #instances-dropdown-btn {
@@ -606,48 +808,11 @@
     .instance-card .name { font-weight: 650; font-size: 15px; color: #fff; }
     .instance-card .meta { font-size: 10px; color: #888; }
 
-    #bottom-left-btns {
-      position: absolute;
-      bottom: 20px;
-      left: 16px;
-      display: flex;
-      gap: 10px;
-      align-items: center;
-    }
-
-    .bottom-btn {
-      height: 40px;
-      border-radius: 20px;
-      border: none;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      transition: transform 0.1s, opacity 0.15s;
-    }
-
-    .bottom-btn:hover { transform: scale(1.08); }
-
-    #btn-config {
-      width: 40px;
-      background: #2ec4d6;
-      font-size: 18px;
-      border-radius: 50%;
-    }
-
-    #btn-exit {
-      background: #fff;
-      color: #222;
-      font-size: 12px;
-      font-weight: 800;
-      padding: 0 18px;
-      letter-spacing: 0.5px;
-    }
 
     #config-panel {
       position: absolute;
-      bottom: 68px;
-      left: 16px;
+      bottom: 30px;
+      left: 236px;
       width: 260px;
       background: rgba(20, 20, 28, 0.94);
       backdrop-filter: blur(10px);
@@ -658,7 +823,7 @@
       flex-direction: column;
       gap: 10px;
       box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
-      z-index: 5;
+      z-index: 6;
     }
 
     #config-panel.open { display: flex; }
@@ -817,7 +982,7 @@
   <!-- BARRA DE TITULO -->
   <div id="titlebar" data-tauri-drag-region>
     <span id="titlebar-title" data-tauri-drag-region>
-      <img src="img/logo.png" alt="" />Chevere Tu Launcher v1.1.2
+      <img src="img/logo.png" alt="" />Chevere Tu Launcher v1.1.3
     </span>
     <div id="titlebar-buttons">
       <button id="titlebar-minimize" title="Minimizar">─</button>
@@ -889,19 +1054,73 @@
     <div id="side-left">
       <img id="player-skin-img" src="" alt="skin" />
       <div id="player-nick">Steve</div>
+
+      <nav id="main-nav">
+        <button class="nav-btn active" data-panel="home">Inicio</button>
+        <button class="nav-btn" data-panel="staff">Staff</button>
+        <button class="nav-btn" data-panel="creaciones">Creaciones</button>
+        <div class="nav-divider"></div>
+        <button class="nav-btn" id="btn-config">Config</button>
+        <button class="nav-btn nav-btn-exit" id="btn-exit">Salir</button>
+      </nav>
     </div>
-    <div id="center-logo">
-      <img src="img/chevere-studeos.png" alt="Chevere Studeos" />
+
+    <div id="content-stage">
+
+      <!-- INICIO -->
+      <div class="content-panel active" id="panel-home">
+        <div id="center-logo">
+          <img src="img/chevere-studeos.png" alt="Chevere Studeos" />
+        </div>
+        <p class="home-text">
+          Chevere Studeos es más que un nombre, es la forma en que compartimos ideas
+          y aventuras creando mundos únicos con pasión y entusiasmo para que vivas
+          experiencias irrepetibles.
+        </p>
+        <div class="home-mascot-row">
+          <img src="img/logo.png" alt="Cuy" class="home-mascot-img" />
+          <p class="home-text">
+            Escogimos el cuy como nuestro logo porque es curioso y sociable,
+            igual que nosotros, siempre explorando y creando.
+          </p>
+        </div>
+      </div>
+
+      <!-- STAFF -->
+      <div class="content-panel" id="panel-staff">
+        <h2 class="panel-title">Staff</h2>
+        <div id="staff-groups">
+          <!--
+            Para agregar o editar miembros del staff, sumá objetos al array
+            STAFF_MEMBERS en dist/main.js. Cada uno necesita: nombre de
+            Minecraft (para traer la cara desde la API) y rol/categoria.
+            Ejemplo:
+              { name: "Steve", role: "Config" },
+          -->
+        </div>
+      </div>
+
+      <!-- CREACIONES -->
+      <div class="content-panel" id="panel-creaciones">
+        <h2 class="panel-title">Creaciones</h2>
+        <div id="creaciones-timeline">
+          <!--
+            Para agregar o editar proyectos, sumá objetos al array
+            CREACIONES en dist/main.js. Cada uno necesita: nombre,
+            fecha, y opcionalmente una imagen (img/creaciones/archivo.png).
+          -->
+        </div>
+      </div>
+
     </div>
-    <div id="center-stage-logo">
-      <img src="img/logo.png" alt="Logo" />
-    </div>
+
     <div id="side-right">
       <button id="instances-dropdown-btn">
         INSTANCIAS <span class="arrow">▼</span>
       </button>
       <div id="instances-panel"></div>
     </div>
+
     <div id="config-panel">
       <div class="config-title">Configuracion</div>
       <div class="ram-row">
@@ -915,10 +1134,7 @@
         <select id="size-select"></select>
       </div>
     </div>
-    <div id="bottom-left-btns">
-      <button class="bottom-btn" id="btn-config" title="Configuracion">⚙</button>
-      <button class="bottom-btn" id="btn-exit">SALIR</button>
-    </div>
+
   </div>
 
   <!-- Overlay detalle de instancia -->
