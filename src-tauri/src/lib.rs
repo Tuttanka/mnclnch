@@ -558,10 +558,10 @@ async fn ensure_fabric(
 
             let list_url = format!("https://meta.fabricmc.net/v2/versions/loader/{}", mc_version);
             let loaders: Vec<LoaderEntry> = fetch_json(client, &list_url).await
-                .map_err(|_| format!("No hay versiones de Fabric disponibles para MC {}", mc_version))?;
+                .map_err(|e| format!("No se pudo obtener la lista de versiones de Fabric para MC {mc_version}: {e}"))?;
 
             let latest_version = loaders.first()
-                .ok_or_else(|| format!("No hay versiones de Fabric para MC {}", mc_version))?
+                .ok_or_else(|| format!("No hay versiones de Fabric disponibles para MC {mc_version}"))?
                 .loader.version.clone();
 
             let fallback_url = format!(
@@ -569,7 +569,7 @@ async fn ensure_fabric(
                 mc_version, latest_version
             );
             fetch_json(client, &fallback_url).await
-                .map_err(|_| format!("No se pudo descargar Fabric para MC {}", mc_version))?
+                .map_err(|e| format!("No se pudo descargar el perfil de Fabric {latest_version} para MC {mc_version}: {e}"))?
         }
     };
 

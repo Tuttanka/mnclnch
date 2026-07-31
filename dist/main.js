@@ -347,6 +347,8 @@ btnBackLogin.addEventListener("click", () => {
   btnVerifyCode.disabled = false;
   codeInput.value = "";
   setCodeStatus("");
+  btnChooseNoPremium.disabled = false;
+  btnChoosePremium.disabled = false;
   showScreen("login-screen");
 });
 
@@ -586,6 +588,8 @@ function startMsPolling(sessionId) {
           const parsed = JSON.parse(msg.slice(jsonStart));
           if (parsed.not_whitelisted && parsed.minecraft_username) {
             unauthUsername.textContent = `"${parsed.minecraft_username}"`;
+            btnChooseNoPremium.disabled = false;
+            btnChoosePremium.disabled = false;
             showScreen("unauthorized-screen"); return;
           }
         } catch (_) { }
