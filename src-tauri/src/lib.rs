@@ -1002,7 +1002,7 @@ async fn do_microsoft_login(app: &AppHandle, session_id: &str, backend_url: &str
     use oauth2::{AuthUrl, ClientId, DeviceAuthorizationUrl, TokenUrl, basic::BasicClient};
 
     let client = BasicClient::new(
-        ClientId::new("00000000402b5328".to_string()),
+        ClientId::new("6cd90ab7-e6b5-4f24-99b2-addb4ff8b7f8".to_string()),
         None,
         AuthUrl::new("https://login.microsoftonline.com/consumers/oauth2/v2.0/authorize".to_string())
             .map_err(|e| e.to_string())?,
@@ -1021,7 +1021,8 @@ async fn do_microsoft_login(app: &AppHandle, session_id: &str, backend_url: &str
     let details: oauth2::devicecode::StandardDeviceAuthorizationResponse = client
         .exchange_device_code().map_err(|e| e.to_string())?
         .add_scope(Scope::new("XboxLive.signin offline_access".to_string()))
-        .request_async(async_http_client).await.map_err(|e| e.to_string())?;
+        .request_async(async_http_client).await
+        .map_err(|e| format!("Error obteniendo el codigo de Microsoft: {e:?}"))?;
 
     // Emitir el código y URL al frontend para que el usuario sepa qué hacer
     use oauth2::DeviceAuthorizationResponse;
