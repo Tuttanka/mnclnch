@@ -541,9 +541,12 @@ async fn ensure_fabric(
 ) -> Result<(String, Vec<PathBuf>), String> {
     emit(app, unique_code, "fabric", 0, "Descargando Fabric...");
 
-    // Intentar con la versión pedida; si falla, usar la más reciente disponible
+    // Intentar con la versión pedida; si falla, usar la más reciente disponible.
+    // Nota: NO usar el sufijo /profile/json de la API de Fabric — ese endpoint
+    // devuelve un JSON con un formato distinto (plano, estilo launcher vanilla)
+    // que no coincide con la estructura anidada que espera este código.
     let meta_url = format!(
-        "https://meta.fabricmc.net/v2/versions/loader/{}/{}/profile/json",
+        "https://meta.fabricmc.net/v2/versions/loader/{}/{}",
         mc_version, loader_version
     );
 
@@ -565,7 +568,7 @@ async fn ensure_fabric(
                 .loader.version.clone();
 
             let fallback_url = format!(
-                "https://meta.fabricmc.net/v2/versions/loader/{}/{}/profile/json",
+                "https://meta.fabricmc.net/v2/versions/loader/{}/{}",
                 mc_version, latest_version
             );
             fetch_json(client, &fallback_url).await
