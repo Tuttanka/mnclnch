@@ -114,6 +114,8 @@ const btnVerifyCode = document.getElementById("btn-verify-code");
 const codeStatus = document.getElementById("code-status");
 const codeDiscordUsername = document.getElementById("code-discord-username");
 const btnBackToLogin = document.getElementById("btn-back-to-login");
+const inlineCodeWrap = document.getElementById("inline-code-wrap");
+const inlineCodeHint = document.getElementById("inline-code-hint");
 const unauthUsername = document.getElementById("unauth-username");
 const btnBackLogin = document.getElementById("btn-back-login");
 const btnChooseNoPremium = document.getElementById("btn-choose-nopremium");
@@ -178,6 +180,24 @@ function setNicknameStatus(msg, isError = false) {
 }
 function setButtonsDisabled(d) { btnNoPremium.disabled = d; }
 
+function showInlineCode(discordUsername) {
+  codeDiscordUsername.textContent = discordUsername || "";
+  inlineCodeWrap.style.display = "flex";
+  inlineCodeHint.style.display = "block";
+  btnBackToLogin.style.display = "inline-block";
+  codeInput.value = "";
+  setCodeStatus("");
+  codeInput.focus();
+}
+
+function hideInlineCode() {
+  inlineCodeWrap.style.display = "none";
+  inlineCodeHint.style.display = "none";
+  btnBackToLogin.style.display = "none";
+  codeInput.value = "";
+  setCodeStatus("");
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Timeout login (10 segundos)
 // ─────────────────────────────────────────────────────────────────────────────
@@ -190,7 +210,7 @@ function startLoginTimeout() {
     setStatus("Tiempo agotado. Intenta de nuevo.", true);
     setButtonsDisabled(false);
     showScreen("login-screen");
-  }, 10 * 1000);
+  }, 90 * 1000);
 }
 
 function clearLoginTimeout() {
@@ -215,10 +235,7 @@ function startPolling(sessionId) {
       if (data.status === "awaiting_discord_code") {
         stopPolling();
         clearLoginTimeout();
-        codeDiscordUsername.textContent = data.discord_username || "";
-        setCodeStatus(""); codeInput.value = "";
-        showScreen("discord-code-screen");
-        codeInput.focus();
+        showInlineCode(data.discord_username);
         return;
       }
 
@@ -268,6 +285,7 @@ function startInstancesPolling() {
         launcherToken = null;
         launcherUsername = null;
         localStorage.removeItem(SESSION_KEY);
+        hideInlineCode();
         setStatus("Tu acceso fue revocado.", true);
         setButtonsDisabled(false);
         showScreen("login-screen");
@@ -313,6 +331,7 @@ btnVerifyCode.addEventListener("click", async () => {
         launcherToken = data.token;
         currentDiscordId = data.discord_id || null;
         accountTypeStatus.textContent = "";
+        hideInlineCode();
         showScreen("account-type-screen");
       }
     } else if (res.status === 401) {
@@ -337,16 +356,14 @@ btnBackToLogin.addEventListener("click", () => {
   setStatus("");
   setButtonsDisabled(false);
   btnVerifyCode.disabled = false;
-  codeInput.value = "";
-  setCodeStatus("");
+  hideInlineCode();
   showScreen("login-screen");
 });
 btnBackLogin.addEventListener("click", () => {
   setStatus("");
   setButtonsDisabled(false);
   btnVerifyCode.disabled = false;
-  codeInput.value = "";
-  setCodeStatus("");
+  hideInlineCode();
   btnChooseNoPremium.disabled = false;
   btnChoosePremium.disabled = false;
   showScreen("login-screen");
@@ -651,6 +668,7 @@ async function loadInstances() {
       launcherToken = null;
       launcherUsername = null;
       localStorage.removeItem(SESSION_KEY);
+      hideInlineCode();
       setStatus("Tu acceso fue revocado.", true);
       setButtonsDisabled(false);
       showScreen("login-screen");

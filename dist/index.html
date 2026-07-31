@@ -817,7 +817,7 @@
   <!-- BARRA DE TITULO -->
   <div id="titlebar" data-tauri-drag-region>
     <span id="titlebar-title" data-tauri-drag-region>
-      <img src="img/logo.png" alt="" />Chevere Tu Launcher v1.1.0
+      <img src="img/logo.png" alt="" />Chevere Tu Launcher v1.1.2
     </span>
     <div id="titlebar-buttons">
       <button id="titlebar-minimize" title="Minimizar">─</button>
@@ -830,24 +830,21 @@
   <div id="login-screen" class="screen active">
     <div class="login-content">
       <h1 class="login-title">INICIE SESION CON SU<br>CUENTA DE DISCORD</h1>
-      <div class="login-buttons">
+      <div class="login-buttons" style="display:flex; align-items:center; gap:10px; flex-wrap:wrap; justify-content:center;">
         <div class="login-btn-wrap">
           <button id="btn-nopremium" class="login-btn">Accede con Discord</button>
         </div>
+        <div id="inline-code-wrap" style="display:none; align-items:center; gap:8px;">
+          <input id="code-input" placeholder="000000" maxlength="6" style="width:110px;" />
+          <button id="btn-verify-code">Verificar</button>
+        </div>
       </div>
+      <p id="inline-code-hint" style="display:none; font-size:12px; color:rgba(255,255,255,0.6); margin-top:6px;">
+        Ingresa el codigo que te envio el bot "BotChevereStudeos" en tu Discord (<span id="code-discord-username"></span>)
+      </p>
       <div id="login-status"></div>
-    </div>
-  </div>
-
-  <!-- PANTALLA DE CODIGO DISCORD -->
-  <div id="discord-code-screen" class="screen">
-    <div class="discord-code-content">
-      <h2>CONECTANDO MEDIANTE DISCORD</h2>
-      <p>Ingresa el codigo que te envio el bot "BotChevereStudeos"<br>en tu Discord (<span id="code-discord-username"></span>)</p>
-      <input id="code-input" placeholder="000000" maxlength="6" />
-      <button id="btn-verify-code">Verificar</button>
       <div id="code-status"></div>
-      <button id="btn-back-to-login">← Volver al inicio</button>
+      <button id="btn-back-to-login" style="display:none;">← Volver al inicio</button>
     </div>
   </div>
 
@@ -867,7 +864,7 @@
   <!-- PANTALLA INGRESAR NICKNAME -->
   <div id="nickname-screen" class="screen">
     <div class="nickname-content">
-      <h2>NICKNAME DE MINECRAFT</h2>
+      <h2>TU NICKNAME DE MINECRAFT</h2>
       <p>Ingrese su nickname de Minecraft</p>
       <input id="nickname-input" placeholder="Steve" maxlength="16" />
       <button id="btn-save-nickname" class="login-btn">Entrar al Launcher</button>

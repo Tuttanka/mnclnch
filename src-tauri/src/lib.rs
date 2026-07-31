@@ -1001,6 +1001,10 @@ fn poll_microsoft_login(app: AppHandle, session_id: String) -> MsSessionStatus {
 }
 
 async fn do_microsoft_login(app: &AppHandle, session_id: &str, backend_url: &str, discord_id: Option<&str>) -> Result<(String, String), String> {
+    let discord_id = discord_id
+        .filter(|s| !s.is_empty())
+        .ok_or_else(|| "Debes iniciar sesion con Discord primero.".to_string())?;
+
     use minecraft_msa_auth::MinecraftAuthorizationFlow;
     use oauth2::{AuthUrl, ClientId, DeviceAuthorizationUrl, TokenUrl, basic::BasicClient};
 
