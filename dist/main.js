@@ -413,7 +413,7 @@ function startInstancesPolling() {
       if (dropdownOpen) {
         instancesPanel.innerHTML = "";
         for (const inst of instances) {
-          const localVersion = await invoke("get_installed_version", { uniqueCode: inst.unique_code }).catch(() => null);
+          const localVersion = await invoke("get_installed_version", { uniqueCode: inst.id }).catch(() => null);
           const isInstalled = localVersion !== null;
           instancesPanel.appendChild(buildInstanceCard(inst, isInstalled, false));
         }
@@ -811,7 +811,7 @@ async function loadInstances() {
 
   instancesPanel.innerHTML = "";
   for (const inst of instances) {
-    const localVersion = await invoke("get_installed_version", { uniqueCode: inst.unique_code }).catch(() => null);
+    const localVersion = await invoke("get_installed_version", { uniqueCode: inst.id }).catch(() => null);
     const isInstalled = localVersion !== null;
     instancesPanel.appendChild(buildInstanceCard(inst, isInstalled, false));
   }
@@ -877,7 +877,7 @@ async function doDownload(inst) {
   instanceDetailProgressPct.textContent = "0%";
 
   detailUnlisten = await window.__TAURI__.event.listen("download-progress", e => {
-    if (e.payload.unique_code !== inst.unique_code) return;
+    if (e.payload.unique_code !== inst.id) return;
     const pct = Math.max(0, Math.min(100, e.payload.percent ?? 0));
     instanceDetailProgressFill.style.width = `${pct}%`;
     instanceDetailProgressPct.textContent = `${pct}%`;
@@ -885,7 +885,7 @@ async function doDownload(inst) {
 
   try {
     await invoke("download_mrpack", {
-      uniqueCode:       inst.unique_code,
+      uniqueCode:       inst.id,
       mrpackUrl:        inst.mrpack_url,
       mrpackVersion:    "",
       minecraftVersion: inst.minecraft_version,
@@ -934,7 +934,7 @@ async function doLaunch(inst, btn) {
 
   try {
     await invoke("launch_minecraft", {
-      uniqueCode:        inst.unique_code,
+      uniqueCode:        inst.id,
       minecraftVersion:  inst.minecraft_version,
       loader:            inst.loader,
       loaderVersion:     inst.loader_version ?? "",
