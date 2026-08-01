@@ -1082,7 +1082,7 @@ async fn do_microsoft_login(app: &AppHandle, session_id: &str, backend_url: &str
     #[derive(Deserialize)]
     struct BackendResp { token: String, minecraft_username: String, minecraft_uuid: String }
 
-    let mc_access_token = mc_token.access_token().secret().to_string();
+    let mc_access_token = mc_token.access_token().to_string();
 
     let resp = http
         .post(format!("{backend_url}/auth/microsoft/verify"))
