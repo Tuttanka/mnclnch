@@ -972,7 +972,7 @@ async fn launch_minecraft(
     // Esperamos unos segundos para dar tiempo a que la ventana de Minecraft
     // termine de abrir antes de cerrar el launcher (aproximado: no hay forma
     // 100% confiable de detectar "la ventana ya es visible" sin hooks nativos).
-    tokio::time::sleep(std::time::Duration::from_secs(15)).await;
+    tokio::time::sleep(std::time::Duration::from_secs(24)).await;
 
     Ok(())
 }

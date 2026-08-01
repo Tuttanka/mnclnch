@@ -918,6 +918,20 @@ async function doLaunch(inst, btn) {
   const size = await appWindow.innerSize();
   const originalLabel = btn ? btn.textContent : "";
   if (btn) { btn.disabled = true; btn.textContent = "Abriendo Minecraft..."; }
+
+  // Barra animada 0% -> 100% aproximada a los ~24s reales que tarda en abrir
+  const LAUNCH_DURATION_MS = 24000;
+  instanceDetailProgress.classList.add("show");
+  instanceDetailProgressFill.style.width = "0%";
+  instanceDetailProgressPct.textContent = "0%";
+  const startTime = Date.now();
+  const progressTimer = setInterval(() => {
+    const elapsed = Date.now() - startTime;
+    const pct = Math.min(97, Math.round((elapsed / LAUNCH_DURATION_MS) * 100));
+    instanceDetailProgressFill.style.width = `${pct}%`;
+    instanceDetailProgressPct.textContent = `${pct}%`;
+  }, 200);
+
   try {
     await invoke("launch_minecraft", {
       uniqueCode:        inst.unique_code,
@@ -931,8 +945,13 @@ async function doLaunch(inst, btn) {
       windowWidth:       size.width,
       windowHeight:      size.height,
     });
+    clearInterval(progressTimer);
+    instanceDetailProgressFill.style.width = "100%";
+    instanceDetailProgressPct.textContent = "100%";
     await appWindow.close();
   } catch (e) {
+    clearInterval(progressTimer);
+    instanceDetailProgress.classList.remove("show");
     alert("No se pudo lanzar Minecraft:\n" + e);
     if (btn) { btn.disabled = false; btn.textContent = originalLabel; }
   }
