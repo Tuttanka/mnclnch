@@ -19,6 +19,10 @@ enum MsSessionStatus {
         token: String,
         #[serde(rename = "minecraftUsername")]
         minecraft_username: String,
+        #[serde(rename = "minecraftAccessToken")]
+        minecraft_access_token: String,
+        #[serde(rename = "minecraftUuid")]
+        minecraft_uuid: String,
     },
     #[serde(rename = "error")]
     Error { message: String },
@@ -876,6 +880,7 @@ async fn launch_minecraft(
     loader_version: String,
     minecraft_username: String,
     access_token: String,
+    minecraft_uuid: Option<String>,
     ram_gb: u32,
 ) -> Result<(), String> {
     let inst_dir = instance_dir(&app, &unique_code);
@@ -934,11 +939,11 @@ async fn launch_minecraft(
     let assets = assets_dir(&app);
     let asset_index = &ver_json.asset_index.id;
 
-    // UUID de offline para no-premium (token vacío = no-premium)
-    let uuid = if access_token.is_empty() || access_token == "offline" {
-        format!("offline-{}", &unique_code[..8])
-    } else {
-        unique_code.clone()
+    // UUID: si tenemos el UUID real de Minecraft (cuenta premium), lo usamos.
+    // Si no (cuenta no premium / offline), generamos uno offline estable.
+    let uuid = match minecraft_uuid.filter(|u| !u.is_empty()) {
+        Some(u) => u,
+        None => format!("offline-{}", &unique_code[..8]),
     };
 
     let mut cmd = std::process::Command::new(&java);
@@ -985,7 +990,12 @@ async fn start_microsoft_login(app: AppHandle, session_id: String, discord_id: O
     let app_clone = app.clone();
     tokio::spawn(async move {
         let status = match do_microsoft_login(&app_clone, &session_id, &backend_url, discord_id.as_deref()).await {
-            Ok((token, username)) => MsSessionStatus::Done { token, minecraft_username: username },
+            Ok((token, username, mc_access_token, mc_uuid)) => MsSessionStatus::Done {
+                token,
+                minecraft_username: username,
+                minecraft_access_token: mc_access_token,
+                minecraft_uuid: mc_uuid,
+            },
             Err(e) => MsSessionStatus::Error { message: e },
         };
         sessions_clone.0.lock().unwrap().insert(session_id, status);
@@ -1000,7 +1010,7 @@ fn poll_microsoft_login(app: AppHandle, session_id: String) -> MsSessionStatus {
     status
 }
 
-async fn do_microsoft_login(app: &AppHandle, session_id: &str, backend_url: &str, discord_id: Option<&str>) -> Result<(String, String), String> {
+async fn do_microsoft_login(app: &AppHandle, session_id: &str, backend_url: &str, discord_id: Option<&str>) -> Result<(String, String, String, String), String> {
     let discord_id = discord_id
         .filter(|s| !s.is_empty())
         .ok_or_else(|| "Debes iniciar sesion con Discord primero.".to_string())?;
@@ -1070,12 +1080,14 @@ async fn do_microsoft_login(app: &AppHandle, session_id: &str, backend_url: &str
         .map_err(|e| format!("Error validando la cuenta con Xbox/Minecraft: {e:?}"))?;
 
     #[derive(Deserialize)]
-    struct BackendResp { token: String, minecraft_username: String }
+    struct BackendResp { token: String, minecraft_username: String, minecraft_uuid: String }
+
+    let mc_access_token = mc_token.access_token().secret().to_string();
 
     let resp = http
         .post(format!("{backend_url}/auth/microsoft/verify"))
         .json(&serde_json::json!({
-            "minecraft_access_token": mc_token.access_token(),
+            "minecraft_access_token": mc_access_token,
             "discord_id": discord_id,
         }))
         .send().await.map_err(|e| format!("Error contactando el backend: {e}"))?;
@@ -1088,7 +1100,7 @@ async fn do_microsoft_login(app: &AppHandle, session_id: &str, backend_url: &str
     }
 
     let data: BackendResp = resp.json().await.map_err(|e| e.to_string())?;
-    Ok((data.token, data.minecraft_username))
+    Ok((data.token, data.minecraft_username, mc_access_token, data.minecraft_uuid))
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1110,6 +1122,20 @@ pub fn run() {
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_process::init())
         .manage(Arc::new(MsSessions(Mutex::new(HashMap::new()))))
+        .setup(|app| {
+            // Limpieza de una carpeta de AppData vieja, que quedó huérfana de
+            // cuando el identifier de la app era distinto ("cheverestudios.launcher").
+            // Se ejecuta una vez por arranque; si ya no existe, no hace nada.
+            if let Ok(data_dir) = app.path().app_data_dir() {
+                if let Some(roaming) = data_dir.parent() {
+                    let old_dir = roaming.join("cheverestudios.launcher");
+                    if old_dir.exists() {
+                        let _ = std::fs::remove_dir_all(&old_dir);
+                    }
+                }
+            }
+            Ok(())
+        })
         .invoke_handler(tauri::generate_handler![
             get_installed_version,
             download_mrpack,

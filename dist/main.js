@@ -74,7 +74,7 @@ async function tryAutoLogin() {
       headers: { "Authorization": `Bearer ${saved.token}` }
     });
     if (res.ok) {
-      onLoginSuccess(saved.token, saved.username, saved.accountType);
+      onLoginSuccess(saved.token, saved.username, saved.accountType, saved.mcAccessToken || "", saved.mcUuid || "");
     } else {
       localStorage.removeItem(SESSION_KEY);
     }
@@ -195,8 +195,21 @@ document.querySelectorAll(".nav-btn[data-panel]").forEach(btn => {
   });
 });
 
+const HOME_FACTS = [
+  "¿Sabías que? Chevere Studeos empezó como un proyecto entre amigos.",
+  "¿Sabías que? El cuy fue elegido por votación del equipo.",
+  // Sumá más frases acá, una por línea, con el mismo formato.
+];
+
+function renderHomeFact() {
+  const el = document.getElementById("home-fact");
+  if (!el || !HOME_FACTS.length) return;
+  el.textContent = HOME_FACTS[Math.floor(Math.random() * HOME_FACTS.length)];
+}
+
 renderStaff();
 renderCreaciones();
+renderHomeFact();
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Referencias DOM
@@ -249,6 +262,8 @@ let detailUnlisten = null;
 let launcherToken = null;
 let launcherUsername = null;
 let launcherAccType = null;
+let launcherMcAccessToken = null;
+let launcherMcUuid = null;
 let currentDiscordId = null;
 const SESSION_KEY = "launcher_session";
 
@@ -685,7 +700,13 @@ function startMsPolling(sessionId) {
     if (data.status === "done") {
       stopMsPolling();
       closeMsDeviceOverlay();
-      onLoginSuccess(data.token, data.minecraftUsername || data.minecraft_username, "premium");
+      onLoginSuccess(
+        data.token,
+        data.minecraftUsername || data.minecraft_username,
+        "premium",
+        data.minecraftAccessToken || data.minecraft_access_token || "",
+        data.minecraftUuid || data.minecraft_uuid || ""
+      );
       return;
     }
     if (data.status === "error") {
@@ -714,12 +735,14 @@ function startMsPolling(sessionId) {
 // ─────────────────────────────────────────────────────────────────────────────
 // Login exitoso
 // ─────────────────────────────────────────────────────────────────────────────
-function onLoginSuccess(token, username, accountType) {
+function onLoginSuccess(token, username, accountType, mcAccessToken = "", mcUuid = "") {
   launcherToken = token;
   launcherUsername = username;
   launcherAccType = accountType;
+  launcherMcAccessToken = mcAccessToken;
+  launcherMcUuid = mcUuid;
 
-  localStorage.setItem(SESSION_KEY, JSON.stringify({ token, username, accountType }));
+  localStorage.setItem(SESSION_KEY, JSON.stringify({ token, username, accountType, mcAccessToken, mcUuid }));
 
   showScreen("main-screen");
 
@@ -830,7 +853,6 @@ function renderDetailActions(inst, isInstalled, needsUpdate) {
   if (!isInstalled) {
     addBtn("btn-download", "Descargar", () => doDownload(inst));
   } else {
-    addBtn("btn-repair", "Reparar", () => doDownload(inst));
     addBtn("btn-play", "Jugar", () => doLaunch(inst));
   }
   function addBtn(cls, label, onClick) {
@@ -901,9 +923,11 @@ async function doLaunch(inst) {
       loader:            inst.loader,
       loaderVersion:     inst.loader_version ?? "",
       minecraftUsername: launcherUsername,
-      accessToken:       launcherToken || "",
+      accessToken:       launcherAccType === "premium" ? (launcherMcAccessToken || "") : "",
+      minecraftUuid:     launcherAccType === "premium" ? (launcherMcUuid || "") : "",
       ramGb:             ram,
     });
+    await appWindow.close();
   } catch (e) {
     alert("No se pudo lanzar Minecraft:\n" + e);
   }
