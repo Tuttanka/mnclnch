@@ -502,8 +502,7 @@
       margin-bottom: 10px;
     }
 
-    #player-nick::before { content: '"'; }
-    #player-nick::after { content: '"'; }
+
 
     #main-nav {
       display: flex;
@@ -545,17 +544,51 @@
     .nav-btn-exit { color: rgba(255, 130, 130, 0.85); }
     .nav-btn-exit:hover { color: #ff8888; }
 
+    #social-links {
+      margin-top: auto;
+      display: flex;
+      gap: 10px;
+      padding-top: 20px;
+    }
+
+    .social-btn {
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      background: #fff;
+      border: none;
+      color: #111;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: transform 0.12s, opacity 0.12s;
+    }
+
+    .social-btn svg { width: 18px; height: 18px; }
+    .social-btn:hover { transform: scale(1.08); opacity: 0.85; }
+
     #content-stage {
       position: relative;
       z-index: 2;
       flex: 1;
       min-width: 0;
-      padding: 40px 220px 40px 20px;
+      padding: 30px 220px 30px 20px;
       overflow-y: auto;
+      display: flex;
     }
 
-    .content-panel { display: none; }
-    .content-panel.active { display: block; }
+    .content-panel {
+      display: none;
+      flex: 1;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100%;
+      width: 100%;
+      gap: 4px;
+    }
+    .content-panel.active { display: flex; }
 
     #center-logo {
       display: flex;
@@ -611,6 +644,8 @@
     }
 
     /* ── Staff ── */
+    #staff-groups { width: 100%; max-width: 640px; }
+
     .staff-category { margin-bottom: 28px; }
 
     .staff-category-title {
@@ -625,7 +660,8 @@
     .staff-cards {
       display: flex;
       flex-wrap: wrap;
-      gap: 14px;
+      justify-content: center;
+      gap: 16px;
     }
 
     .staff-card {
@@ -671,6 +707,8 @@
     #creaciones-timeline {
       position: relative;
       padding: 40px 10px;
+      width: 100%;
+      max-width: 760px;
     }
 
     #creaciones-timeline::before {
@@ -685,6 +723,7 @@
 
     .creacion-track {
       display: flex;
+      justify-content: center;
       gap: 40px;
       overflow-x: auto;
       padding-bottom: 10px;
@@ -794,8 +833,11 @@
 
     .instance-card img {
       width: 100%;
-      height: 90px;
-      object-fit: cover;
+      height: 110px;
+      object-fit: contain;
+      background: rgba(0, 0, 0, 0.35);
+      padding: 6px 0;
+      box-sizing: border-box;
     }
 
     .instance-card .body {
@@ -809,26 +851,21 @@
     .instance-card .meta { font-size: 10px; color: #888; }
 
 
-    #config-panel {
-      position: absolute;
-      bottom: 30px;
-      left: 236px;
-      width: 260px;
-      background: rgba(20, 20, 28, 0.94);
+    #config-box {
+      width: 100%;
+      max-width: 300px;
+      background: rgba(20, 20, 28, 0.7);
       backdrop-filter: blur(10px);
       border: 1px solid rgba(255, 255, 255, 0.1);
       border-radius: 12px;
-      padding: 16px;
-      display: none;
+      padding: 20px;
+      display: flex;
       flex-direction: column;
       gap: 10px;
-      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
-      z-index: 6;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
     }
 
-    #config-panel.open { display: flex; }
-
-    #config-panel .config-title {
+    #config-box .config-title {
       font-size: 13px;
       font-weight: 800;
       color: #fff;
@@ -836,18 +873,18 @@
       text-transform: uppercase;
     }
 
-    #config-panel .ram-row {
+    #config-box .ram-row {
       display: flex;
       align-items: center;
       justify-content: space-between;
     }
 
-    #config-panel .ram-label { font-size: 12px; color: #aaa; }
-    #config-panel .ram-value { font-size: 13px; font-weight: 700; color: #2ec4d6; }
+    #config-box .ram-label { font-size: 12px; color: #aaa; }
+    #config-box .ram-value { font-size: 13px; font-weight: 700; color: #2ec4d6; }
 
     #ram-slider { width: 100%; accent-color: #2ec4d6; cursor: pointer; }
 
-    #config-panel .ram-minmax {
+    #config-box .ram-minmax {
       display: flex;
       justify-content: space-between;
       font-size: 10px;
@@ -982,7 +1019,7 @@
   <!-- BARRA DE TITULO -->
   <div id="titlebar" data-tauri-drag-region>
     <span id="titlebar-title" data-tauri-drag-region>
-      <img src="img/logo.png" alt="" />Chevere Tu Launcher v1.1.3
+      <img src="img/logo.png" alt="" />Chevere Tu Launcher v1.1.4
     </span>
     <div id="titlebar-buttons">
       <button id="titlebar-minimize" title="Minimizar">─</button>
@@ -1000,7 +1037,7 @@
           <button id="btn-nopremium" class="login-btn">Accede con Discord</button>
         </div>
         <div id="inline-code-wrap" style="display:none; align-items:center; gap:8px;">
-          <input id="code-input" placeholder="000000" maxlength="6" style="width:110px;" />
+          <input id="code-input" placeholder="000000" maxlength="6" />
           <button id="btn-verify-code">Verificar</button>
         </div>
       </div>
@@ -1060,9 +1097,18 @@
         <button class="nav-btn" data-panel="staff">Staff</button>
         <button class="nav-btn" data-panel="creaciones">Creaciones</button>
         <div class="nav-divider"></div>
-        <button class="nav-btn" id="btn-config">Config</button>
+        <button class="nav-btn" data-panel="config" id="btn-config">Config</button>
         <button class="nav-btn nav-btn-exit" id="btn-exit">Salir</button>
       </nav>
+
+      <div id="social-links">
+        <button class="social-btn" id="btn-social-x" title="X (Twitter)">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M18.9 2H22l-7.6 8.7L23.3 22H16.6l-5.2-6.8L5.4 22H2.3l8.1-9.3L1.7 2h6.9l4.7 6.2L18.9 2Zm-1.2 18h1.7L7.4 4H5.6l12.1 16Z"/></svg>
+        </button>
+        <button class="social-btn" id="btn-social-tiktok" title="TikTok">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M16.6 5.2c-.9-.6-1.5-1.6-1.7-2.7h-3v13.4c0 1.4-1.1 2.5-2.5 2.5s-2.5-1.1-2.5-2.5 1.1-2.5 2.5-2.5c.3 0 .5 0 .8.1V10.4c-.3 0-.5-.1-.8-.1-3.1 0-5.6 2.5-5.6 5.6S6.3 21.5 9.4 21.5s5.6-2.5 5.6-5.6V9c1.1.8 2.5 1.3 4 1.3V7.3c-.9 0-1.7-.3-2.4-.8-.4-.3-.7-.7-1-1.3Z"/></svg>
+        </button>
+      </div>
     </div>
 
     <div id="content-stage">
@@ -1112,6 +1158,23 @@
         </div>
       </div>
 
+      <!-- CONFIG -->
+      <div class="content-panel" id="panel-config">
+        <h2 class="panel-title">Configuracion</h2>
+        <div id="config-box">
+          <div class="ram-row">
+            <span class="ram-label">Memoria RAM asignada</span>
+            <span class="ram-value" id="ram-value">4 GB</span>
+          </div>
+          <input type="range" id="ram-slider" min="1" max="16" step="1" value="4" />
+          <div class="ram-minmax"><span>1 GB</span><span>16 GB</span></div>
+          <div class="config-title" style="margin-top:8px">Tamano de ventana</div>
+          <div class="size-select-wrapper">
+            <select id="size-select"></select>
+          </div>
+        </div>
+      </div>
+
     </div>
 
     <div id="side-right">
@@ -1119,20 +1182,6 @@
         INSTANCIAS <span class="arrow">▼</span>
       </button>
       <div id="instances-panel"></div>
-    </div>
-
-    <div id="config-panel">
-      <div class="config-title">Configuracion</div>
-      <div class="ram-row">
-        <span class="ram-label">Memoria RAM asignada</span>
-        <span class="ram-value" id="ram-value">4 GB</span>
-      </div>
-      <input type="range" id="ram-slider" min="1" max="16" step="1" value="4" />
-      <div class="ram-minmax"><span>1 GB</span><span>16 GB</span></div>
-      <div class="config-title" style="margin-top:8px">Tamano de ventana</div>
-      <div class="size-select-wrapper">
-        <select id="size-select"></select>
-      </div>
     </div>
 
   </div>

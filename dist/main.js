@@ -222,7 +222,6 @@ const playerSkinImg = document.getElementById("player-skin-img");
 const playerNick = document.getElementById("player-nick");
 const instancesDropdownBtn = document.getElementById("instances-dropdown-btn");
 const instancesPanel = document.getElementById("instances-panel");
-const configPanel = document.getElementById("config-panel");
 const btnConfig = document.getElementById("btn-config");
 const btnExit = document.getElementById("btn-exit");
 const ramSlider = document.getElementById("ram-slider");
@@ -926,7 +925,6 @@ ramSlider.addEventListener("input", () => {
 // ─────────────────────────────────────────────────────────────────────────────
 // Botones inferiores
 // ─────────────────────────────────────────────────────────────────────────────
-btnConfig.addEventListener("click", () => configPanel.classList.toggle("open"));
 
 const SIZE_KEY = "launcher_window_size";
 const SIZES = [
@@ -960,15 +958,14 @@ async function applySize(idx) {
 applySize(currentSizeIdx);
 sizeSelect.addEventListener("change", () => applySize(parseInt(sizeSelect.value)));
 
-document.addEventListener("click", e => {
-  if (configPanel.classList.contains("open") &&
-    !configPanel.contains(e.target) &&
-    e.target !== btnConfig) {
-    configPanel.classList.remove("open");
-  }
-});
-
 btnExit.addEventListener("click", async () => { await invoke("exit_app"); });
+
+document.getElementById("btn-social-x").addEventListener("click", () => {
+  openUrl("https://x.com/CStudeos");
+});
+document.getElementById("btn-social-tiktok").addEventListener("click", () => {
+  openUrl("https://www.tiktok.com/@chevere_studeos");
+});
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Seguridad
