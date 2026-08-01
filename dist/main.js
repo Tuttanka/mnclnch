@@ -83,8 +83,6 @@ async function tryAutoLogin() {
   }
 }
 
-tryAutoLogin();
-
 // ─────────────────────────────────────────────────────────────────────────────
 // Config
 // ─────────────────────────────────────────────────────────────────────────────
@@ -93,6 +91,8 @@ const configReady = fetch("config.json")
   .then(r => r.json())
   .then(cfg => { if (cfg.backend_url) BACKEND_URL = cfg.backend_url; })
   .catch(() => { });
+
+tryAutoLogin();
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Tauri APIs
@@ -575,12 +575,8 @@ function showMsDeviceCodeScreen(userCode, verificationUri) {
   overlay.innerHTML = `
     <div style="font-size:13px;color:rgba(255,255,255,0.5);text-transform:uppercase;letter-spacing:2px;">Inicio de sesion con Microsoft</div>
     <div style="font-size:15px;color:rgba(255,255,255,0.85);text-align:center;line-height:1.6;max-width:340px;">
-      Abre este enlace en tu navegador y escribe el codigo que aparece abajo.
+      Se abrio tu navegador. Copia este codigo y pegalo ahi para continuar.
     </div>
-    <a href="#" id="ms-open-url" style="
-      font-size:14px; font-weight:700; color:#60a5fa;
-      text-decoration:none; border-bottom:1px solid rgba(96,165,250,0.4); padding-bottom:2px;
-    ">${verificationUri}</a>
     <div style="
       background:rgba(255,255,255,0.07);
       border:1px solid rgba(255,255,255,0.15);
@@ -609,11 +605,8 @@ function showMsDeviceCodeScreen(userCode, verificationUri) {
   `;
   document.body.appendChild(overlay);
 
-  // Abrir URL en navegador
-  document.getElementById("ms-open-url").addEventListener("click", async (e) => {
-    e.preventDefault();
-    await openUrl(verificationUri);
-  });
+  // Abrir el navegador automáticamente, sin que el usuario tenga que hacer clic
+  openUrl(verificationUri);
 
   // Copiar código
   document.getElementById("ms-copy-code").addEventListener("click", async () => {
