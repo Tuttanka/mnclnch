@@ -195,6 +195,13 @@ document.querySelectorAll(".nav-btn[data-panel]").forEach(btn => {
   });
 });
 
+document.getElementById("instance-detail-back").addEventListener("click", () => {
+  document.querySelectorAll(".content-panel").forEach(p => p.classList.remove("active"));
+  document.getElementById("panel-home").classList.add("active");
+  document.querySelectorAll(".nav-btn[data-panel]").forEach(b => b.classList.remove("active"));
+  document.querySelector('.nav-btn[data-panel="home"]').classList.add("active");
+});
+
 const HOME_FACTS = [
   "¿Sabías que? Chevere Studeos empezó como un proyecto entre amigos.",
   "¿Sabías que? El cuy fue elegido por votación del equipo.",
@@ -825,40 +832,38 @@ function buildInstanceCard(inst, isInstalled, needsUpdate) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Overlay detalle de instancia
+// Panel de detalle de instancia (integrado en el menú, como Staff/Creaciones)
 // ─────────────────────────────────────────────────────────────────────────────
+const instanceDetailBg = document.getElementById("instance-detail-bg");
+const instanceDetailButtons = document.getElementById("instance-detail-buttons");
+const instanceDetailProgress = document.getElementById("instance-detail-progress");
+const instanceDetailProgressFill = document.getElementById("instance-detail-progress-fill");
+const instanceDetailProgressPct = document.getElementById("instance-detail-progress-pct");
+
 function openDetail(inst, isInstalled, needsUpdate) {
-  detailLogo.src = inst.image_url || "";
-  detailLogo.onerror = () => { detailLogo.style.display = "none"; };
-  detailLogo.onload = () => { detailLogo.style.display = "block"; };
-  detailName.textContent = inst.name;
-  detailUpdateBadge.classList.toggle("show", needsUpdate);
-  detailProgressArea.classList.remove("show");
-  detailProgressFill.style.width = "0%";
-  detailProgressPct.textContent = "0%";
+  instanceDetailBg.style.backgroundImage = inst.image_url ? `url('${inst.image_url}')` : "none";
+  instanceDetailProgress.classList.remove("show");
+  instanceDetailProgressFill.style.width = "0%";
+  instanceDetailProgressPct.textContent = "0%";
+
+  document.querySelectorAll(".nav-btn[data-panel]").forEach(b => b.classList.remove("active"));
+  document.querySelectorAll(".content-panel").forEach(p => p.classList.remove("active"));
+  document.getElementById("panel-instance").classList.add("active");
+
   renderDetailActions(inst, isInstalled, needsUpdate);
-  detailOverlay.classList.add("open");
 }
-
-function closeDetail() {
-  detailOverlay.classList.remove("open");
-  if (detailUnlisten) { detailUnlisten(); detailUnlisten = null; }
-}
-
-detailClose.addEventListener("click", closeDetail);
-detailOverlay.addEventListener("click", e => { if (e.target === detailOverlay) closeDetail(); });
 
 function renderDetailActions(inst, isInstalled, needsUpdate) {
-  detailActions.innerHTML = "";
+  instanceDetailButtons.innerHTML = "";
   if (!isInstalled) {
-    addBtn("btn-download", "Descargar", () => doDownload(inst));
+    addBtn("btn-download", "Descargar", (b) => doDownload(inst));
   } else {
-    addBtn("btn-play", "Jugar", () => doLaunch(inst));
+    addBtn("btn-play", "Jugar", (b) => doLaunch(inst, b));
   }
   function addBtn(cls, label, onClick) {
     const b = document.createElement("button");
-    b.className = cls; b.textContent = label; b.onclick = onClick;
-    detailActions.appendChild(b);
+    b.className = cls; b.textContent = label; b.onclick = () => onClick(b);
+    instanceDetailButtons.appendChild(b);
   }
 }
 
@@ -866,20 +871,16 @@ function renderDetailActions(inst, isInstalled, needsUpdate) {
 // Descarga
 // ─────────────────────────────────────────────────────────────────────────────
 async function doDownload(inst) {
-  detailActions.querySelectorAll("button").forEach(b => b.disabled = true);
-  detailProgressArea.classList.add("show");
-  detailProgressStatus.textContent = "Conectando...";
-  detailProgressFill.style.width = "0%";
-  detailProgressPct.textContent = "0%";
+  instanceDetailButtons.querySelectorAll("button").forEach(b => b.disabled = true);
+  instanceDetailProgress.classList.add("show");
+  instanceDetailProgressFill.style.width = "0%";
+  instanceDetailProgressPct.textContent = "0%";
 
   detailUnlisten = await window.__TAURI__.event.listen("download-progress", e => {
     if (e.payload.unique_code !== inst.unique_code) return;
     const pct = Math.max(0, Math.min(100, e.payload.percent ?? 0));
-    detailProgressFill.style.width = `${pct}%`;
-    detailProgressPct.textContent = `${pct}%`;
-    detailProgressStatus.textContent =
-      e.payload.status === "descargando" ? "Descargando..." :
-        e.payload.status === "descomprimiendo" ? "Descomprimiendo..." : "Listo";
+    instanceDetailProgressFill.style.width = `${pct}%`;
+    instanceDetailProgressPct.textContent = `${pct}%`;
   });
 
   try {
@@ -892,20 +893,18 @@ async function doDownload(inst) {
       loaderVersion:    inst.loader_version ?? "",
     });
 
-    detailProgressStatus.textContent = "Instalada";
-    detailProgressFill.style.width = "100%";
-    detailProgressPct.textContent = "100%";
-    detailUpdateBadge.classList.remove("show");
+    instanceDetailProgressFill.style.width = "100%";
+    instanceDetailProgressPct.textContent = "100%";
 
     setTimeout(() => {
-      detailProgressArea.classList.remove("show");
+      instanceDetailProgress.classList.remove("show");
       renderDetailActions(inst, true, false);
-    }, 800);
+    }, 500);
 
   } catch (err) {
-    detailProgressStatus.textContent = `Error: ${err}`;
-    detailProgressFill.style.width = "0%";
-    detailActions.querySelectorAll("button").forEach(b => b.disabled = false);
+    instanceDetailProgress.classList.remove("show");
+    alert("Error al descargar:\n" + err);
+    instanceDetailButtons.querySelectorAll("button").forEach(b => b.disabled = false);
   } finally {
     if (detailUnlisten) { detailUnlisten(); detailUnlisten = null; }
   }
@@ -914,8 +913,11 @@ async function doDownload(inst) {
 // ─────────────────────────────────────────────────────────────────────────────
 // Lanzar Minecraft
 // ─────────────────────────────────────────────────────────────────────────────
-async function doLaunch(inst) {
+async function doLaunch(inst, btn) {
   const ram = parseInt(ramSlider.value, 10) || 4;
+  const size = await appWindow.innerSize();
+  const originalLabel = btn ? btn.textContent : "";
+  if (btn) { btn.disabled = true; btn.textContent = "Abriendo Minecraft..."; }
   try {
     await invoke("launch_minecraft", {
       uniqueCode:        inst.unique_code,
@@ -926,10 +928,13 @@ async function doLaunch(inst) {
       accessToken:       launcherAccType === "premium" ? (launcherMcAccessToken || "") : "",
       minecraftUuid:     launcherAccType === "premium" ? (launcherMcUuid || "") : "",
       ramGb:             ram,
+      windowWidth:       size.width,
+      windowHeight:      size.height,
     });
     await appWindow.close();
   } catch (e) {
     alert("No se pudo lanzar Minecraft:\n" + e);
+    if (btn) { btn.disabled = false; btn.textContent = originalLabel; }
   }
 }
 

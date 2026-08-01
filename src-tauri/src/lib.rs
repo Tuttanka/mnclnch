@@ -882,6 +882,8 @@ async fn launch_minecraft(
     access_token: String,
     minecraft_uuid: Option<String>,
     ram_gb: u32,
+    window_width: Option<u32>,
+    window_height: Option<u32>,
 ) -> Result<(), String> {
     let inst_dir = instance_dir(&app, &unique_code);
     if !inst_dir.exists() {
@@ -961,9 +963,17 @@ async fn launch_minecraft(
        .arg("--uuid").arg(&uuid)
        .arg("--accessToken").arg(if access_token.is_empty() { "0" } else { &access_token })
        .arg("--userType").arg(if access_token.is_empty() { "offline" } else { "msa" })
+       .arg("--width").arg(window_width.unwrap_or(1280).to_string())
+       .arg("--height").arg(window_height.unwrap_or(720).to_string())
        .current_dir(&inst_dir);
 
     cmd.spawn().map_err(|e| format!("No se pudo lanzar Minecraft: {e}"))?;
+
+    // Esperamos unos segundos para dar tiempo a que la ventana de Minecraft
+    // termine de abrir antes de cerrar el launcher (aproximado: no hay forma
+    // 100% confiable de detectar "la ventana ya es visible" sin hooks nativos).
+    tokio::time::sleep(std::time::Duration::from_secs(15)).await;
+
     Ok(())
 }
 

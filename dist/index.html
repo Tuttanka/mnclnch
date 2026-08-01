@@ -141,15 +141,20 @@
     }
 
     .login-btn {
-      padding: 14px 28px;
-      font-size: 15px;
-      font-weight: 700;
-      border-radius: 50px;
+      padding: 20px 40px;
+      font-size: 19px;
+      font-weight: 800;
+      letter-spacing: 0.3px;
+      border-radius: 60px;
       border: none;
       cursor: pointer;
       color: #fff;
-      min-width: 200px;
-      transition: transform 0.1s, opacity 0.1s;
+      min-width: 260px;
+      transition: transform 0.18s cubic-bezier(.34,1.56,.64,1), box-shadow 0.2s, opacity 0.1s;
+    }
+
+    .login-btn:hover:not(:disabled) {
+      transform: translateY(-3px) scale(1.04);
     }
 
     .login-btn:active {
@@ -163,13 +168,20 @@
     }
 
     #btn-nopremium {
-      background: #5865F2;
-      box-shadow: 0 4px 20px rgba(88, 101, 242, 0.5);
+      background: linear-gradient(135deg, #5865F2, #7289DA);
+      box-shadow: 0 6px 26px rgba(88, 101, 242, 0.55);
     }
 
     #btn-nopremium:hover:not(:disabled) {
-      background: #4752c4;
-      box-shadow: 0 6px 24px rgba(88, 101, 242, 0.6);
+      box-shadow: 0 10px 34px rgba(88, 101, 242, 0.75);
+    }
+
+    #inline-code-hint {
+      font-size: 15px;
+      color: rgba(255, 255, 255, 0.85);
+      margin-top: 14px;
+      max-width: 480px;
+      line-height: 1.5;
     }
 
     #login-status {
@@ -242,6 +254,7 @@
     }
 
     #btn-verify-code {
+      position: relative;
       padding: 12px 36px;
       border-radius: 50px;
       border: none;
@@ -250,11 +263,33 @@
       font-size: 15px;
       font-weight: 700;
       cursor: pointer;
-      transition: opacity 0.1s;
+      transition: opacity 0.1s, transform 0.15s;
+      overflow: visible;
+    }
+
+    #btn-verify-code::after {
+      content: '';
+      position: absolute;
+      left: 50%;
+      bottom: 100%;
+      width: 34px;
+      height: 34px;
+      background: url('img/logo.png') center/contain no-repeat;
+      transform: translate(-50%, 8px) scale(0.4) rotate(-10deg);
+      opacity: 0;
+      pointer-events: none;
+      transition: transform 0.25s cubic-bezier(.34,1.56,.64,1), opacity 0.2s;
+      filter: drop-shadow(0 3px 6px rgba(0,0,0,0.5));
     }
 
     #btn-verify-code:hover {
-      opacity: 0.85;
+      opacity: 0.9;
+      transform: translateY(-1px);
+    }
+
+    #btn-verify-code:hover::after {
+      transform: translate(-50%, -6px) scale(1) rotate(0deg);
+      opacity: 1;
     }
 
     #code-status {
@@ -301,14 +336,14 @@
     }
 
     .account-type-content h2 {
-      font-size: 28px;
+      font-size: 38px;
       font-weight: 900;
       color: #fff;
       letter-spacing: -0.5px;
     }
 
     .account-type-content p {
-      font-size: 15px;
+      font-size: 18px;
       color: rgba(255, 255, 255, 0.85);
     }
 
@@ -318,15 +353,15 @@
     }
 
     #btn-choose-nopremium {
-      background: #5865F2;
-      box-shadow: 0 4px 20px rgba(88, 101, 242, 0.5);
-      min-width: 180px;
+      background: linear-gradient(135deg, #6b7280, #4b5563);
+      box-shadow: 0 6px 24px rgba(0, 0, 0, 0.4);
+      color: #fff;
     }
 
     #btn-choose-premium {
-      background: rgba(255, 255, 255, 0.15);
-      border: 1px solid rgba(255, 255, 255, 0.3);
-      min-width: 180px;
+      background: #fff;
+      color: #111;
+      box-shadow: 0 6px 24px rgba(0, 0, 0, 0.3);
     }
 
     /* ============ NICKNAME ============ */
@@ -610,6 +645,111 @@
     .content-panel.active { display: flex; }
     #panel-home.active { justify-content: center; }
     #panel-staff.active, #panel-creaciones.active, #panel-config.active { padding-top: 20px; }
+
+    /* ── Detalle de instancia ── */
+    #panel-instance.active {
+      position: relative;
+      padding: 0;
+      margin: -26px -280px -30px -20px;
+      width: calc(100% + 300px);
+      border-radius: 0;
+      overflow: hidden;
+    }
+
+    #instance-detail-bg {
+      position: absolute;
+      inset: 0;
+      background-size: cover;
+      background-position: center;
+      background-color: #0a0a0f;
+    }
+
+    #instance-detail-bg::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(to top, rgba(8,9,13,0.95) 0%, rgba(8,9,13,0.35) 35%, transparent 65%);
+    }
+
+    #instance-detail-back {
+      position: absolute;
+      top: 18px;
+      left: 18px;
+      z-index: 2;
+      background: rgba(0,0,0,0.45);
+      backdrop-filter: blur(4px);
+      border: none;
+      color: #fff;
+      font-size: 13px;
+      font-weight: 700;
+      padding: 8px 16px;
+      border-radius: 30px;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    #instance-detail-back:hover { background: rgba(0,0,0,0.7); }
+
+    #instance-detail-actions {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 46px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 14px;
+      z-index: 1;
+    }
+
+    #instance-detail-progress {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      width: 260px;
+    }
+    #instance-detail-progress.show { display: flex; }
+
+    #instance-detail-progress-bar {
+      width: 100%;
+      height: 8px;
+      background: rgba(255,255,255,0.15);
+      border-radius: 4px;
+      overflow: hidden;
+    }
+
+    #instance-detail-progress-fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, #2ec4d6, #3b82f6);
+      border-radius: 4px;
+      transition: width 0.2s;
+    }
+
+    #instance-detail-progress-pct {
+      font-size: 15px;
+      font-weight: 800;
+      color: #fff;
+      text-shadow: 0 2px 6px rgba(0,0,0,0.6);
+    }
+
+    #instance-detail-buttons button {
+      padding: 14px 46px;
+      border-radius: 8px;
+      border: none;
+      font-size: 16px;
+      font-weight: 800;
+      letter-spacing: 0.3px;
+      cursor: pointer;
+      color: #fff;
+      transition: transform 0.12s, filter 0.15s;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+    }
+    #instance-detail-buttons button:hover { filter: brightness(1.12); transform: translateY(-2px); }
+    #instance-detail-buttons button:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+    #instance-detail-buttons .btn-download { background: linear-gradient(135deg, #3b82f6, #2563eb); }
+    #instance-detail-buttons .btn-play { background: linear-gradient(135deg, #2ec4d6, #0891b2); }
 
     .home-fact {
       margin-top: 22px;
@@ -1077,7 +1217,7 @@
   <!-- BARRA DE TITULO -->
   <div id="titlebar" data-tauri-drag-region>
     <span id="titlebar-title" data-tauri-drag-region>
-      <img src="img/logo.png" alt="" />Chevere Tu Launcher v1.1.7
+      <img src="img/logo.png" alt="" />Chevere Tu Launcher v1.1.8
     </span>
     <div id="titlebar-buttons">
       <button id="titlebar-minimize" title="Minimizar">─</button>
@@ -1099,7 +1239,7 @@
           <button id="btn-verify-code">Verificar</button>
         </div>
       </div>
-      <p id="inline-code-hint" style="display:none; font-size:12px; color:rgba(255,255,255,0.6); margin-top:6px;">
+      <p id="inline-code-hint" style="display:none;">
         Ingresa el codigo que te envio el bot "BotChevereStudeos" en tu Discord (<span id="code-discord-username"></span>)
       </p>
       <div id="login-status"></div>
@@ -1216,6 +1356,19 @@
             CREACIONES en dist/main.js. Cada uno necesita: nombre,
             fecha, y opcionalmente una imagen (img/creaciones/archivo.png).
           -->
+        </div>
+      </div>
+
+      <!-- DETALLE DE INSTANCIA -->
+      <div class="content-panel" id="panel-instance">
+        <div id="instance-detail-bg"></div>
+        <button id="instance-detail-back">← Volver</button>
+        <div id="instance-detail-actions">
+          <div id="instance-detail-progress">
+            <div id="instance-detail-progress-bar"><div id="instance-detail-progress-fill"></div></div>
+            <div id="instance-detail-progress-pct">0%</div>
+          </div>
+          <div id="instance-detail-buttons"></div>
         </div>
       </div>
 
