@@ -20,15 +20,28 @@ async function checkForUpdates() {
       const overlay = document.createElement("div");
       overlay.style.cssText = `
         position:fixed; inset:0; z-index:9999;
-        background:rgba(0,0,0,0.85); color:#fff;
-        display:flex; flex-direction:column; align-items:center; justify-content:center;
-        font-family:-apple-system,'Segoe UI',sans-serif; gap:14px;
+        background:rgba(0,0,0,0.75);
+        display:flex; align-items:center; justify-content:center;
+        font-family:-apple-system,'Segoe UI',sans-serif;
       `;
       overlay.innerHTML = `
-        <div style="font-size:16px;font-weight:700;">Actualizando el launcher...</div>
-        <div style="font-size:12px;color:#aaa;" id="update-progress">Descargando v${update.version}</div>
-        <div style="width:260px;height:6px;background:#333;border-radius:4px;overflow:hidden;">
-          <div id="update-bar" style="height:100%;width:0%;background:#5865F2;transition:width .2s;"></div>
+        <div style="
+          width:420px; max-width:90%; padding:40px 32px;
+          border-radius:18px; text-align:center;
+          background:linear-gradient(135deg, #4a90d9, #2ec4d6);
+          box-shadow:0 12px 40px rgba(0,0,0,0.45);
+          display:flex; flex-direction:column; align-items:center; gap:22px;
+        ">
+          <img src="img/chevere-studeos.png" alt="" style="height:48px;object-fit:contain;filter:drop-shadow(0 2px 6px rgba(0,0,0,0.35));" />
+          <div style="
+            width:100%; padding:14px 10px;
+            border:2px solid #fff; border-radius:8px;
+            font-size:15px; font-weight:800; letter-spacing:0.5px;
+            color:#fff; text-transform:uppercase;
+          " id="update-progress">Se está actualizando</div>
+          <div style="width:100%;height:6px;background:rgba(0,0,0,0.25);border-radius:4px;overflow:hidden;">
+            <div id="update-bar" style="height:100%;width:0%;background:#fff;transition:width .2s;"></div>
+          </div>
         </div>
       `;
       document.body.appendChild(overlay);
@@ -108,9 +121,6 @@ function getSkinUrl(username) {
 // Staff y Creaciones (editar acá para agregar/quitar gente o proyectos)
 // ─────────────────────────────────────────────────────────────────────────────
 
-// Orden de categorias en la pantalla de Staff
-const STAFF_CATEGORIES = ["Owner", "Constructor", "Modelador", "Config"];
-
 const STAFF_MEMBERS = [
   { name: "PilarG9", role: "Owner" },
   { name: "ZailenZ", role: "Config" },
@@ -128,32 +138,20 @@ function renderStaff() {
   const container = document.getElementById("staff-groups");
   container.innerHTML = "";
 
-  for (const category of STAFF_CATEGORIES) {
-    const members = STAFF_MEMBERS.filter(m => m.role === category);
-    if (!members.length) continue;
-
-    const group = document.createElement("div");
-    group.className = "staff-category";
-    group.innerHTML = `<div class="staff-category-title">${category}</div>`;
-
-    const cards = document.createElement("div");
-    cards.className = "staff-cards";
-    for (const m of members) {
-      const card = document.createElement("div");
-      card.className = "staff-card";
-      card.innerHTML = `
-        <img src="https://mc-heads.net/avatar/${m.name}/100" alt="${m.name}" />
-        <div class="staff-name">${m.name}</div>
-        <div class="staff-role">${m.role}</div>
-      `;
-      cards.appendChild(card);
-    }
-    group.appendChild(cards);
-    container.appendChild(group);
+  if (!STAFF_MEMBERS.length) {
+    container.innerHTML = `<p style="color:rgba(255,255,255,0.5);font-size:13px;grid-column:1/-1;">Todavia no hay miembros cargados.</p>`;
+    return;
   }
 
-  if (!STAFF_MEMBERS.length) {
-    container.innerHTML = `<p style="color:rgba(255,255,255,0.5);font-size:13px;">Todavia no hay miembros cargados.</p>`;
+  for (const m of STAFF_MEMBERS) {
+    const card = document.createElement("div");
+    card.className = "staff-card";
+    card.innerHTML = `
+      <img src="https://mc-heads.net/avatar/${m.name}/100" alt="${m.name}" />
+      <div class="staff-name">${m.name}</div>
+      <div class="staff-role">${m.role}</div>
+    `;
+    container.appendChild(card);
   }
 }
 
@@ -203,7 +201,6 @@ document.getElementById("instance-detail-back").addEventListener("click", () => 
 });
 
 const HOME_FACTS = [
-  "¿Sabías que? Chevere Studeos empezó como un proyecto entre amigos.",
   "¿Sabías que? El cuy fue elegido por votación del equipo.",
   // Sumá más frases acá, una por línea, con el mismo formato.
 ];
@@ -410,6 +407,23 @@ function startInstancesPolling() {
       if (!res.ok) return;
 
       const instances = await res.json();
+
+      // ── Borrar instancias revocadas ──────────────────────────────────────
+      // Comparamos las carpetas locales con las que el backend devuelve.
+      // Si hay una carpeta local cuyo ID ya no está en la respuesta,
+      // significa que el admin sacó esa instancia de la whitelist del jugador:
+      // la borramos de su PC silenciosamente.
+      try {
+        const allowedIds = new Set(instances.map(i => i.id));
+        const localIds = await invoke("list_installed_instance_ids").catch(() => []);
+        for (const localId of localIds) {
+          if (!allowedIds.has(localId)) {
+            await invoke("delete_instance_folder", { uniqueCode: localId }).catch(() => {});
+          }
+        }
+      } catch (_) { }
+      // ────────────────────────────────────────────────────────────────────
+
       if (dropdownOpen) {
         instancesPanel.innerHTML = "";
         for (const inst of instances) {
@@ -797,6 +811,18 @@ async function loadInstances() {
     return;
   }
 
+  // ── Borrar instancias revocadas ──────────────────────────────────────────
+  try {
+    const allowedIds = new Set(instances.map(i => i.id));
+    const localIds = await invoke("list_installed_instance_ids").catch(() => []);
+    for (const localId of localIds) {
+      if (!allowedIds.has(localId)) {
+        await invoke("delete_instance_folder", { uniqueCode: localId }).catch(() => {});
+      }
+    }
+  } catch (_) { }
+  // ──────────────────────────────────────────────────────────────────────────
+
   if (!instances.length) {
     instancesPanel.innerHTML = "<p style='color:#888;font-size:11px;padding:4px'>Sin instancias disponibles.</p>";
     return;
@@ -817,7 +843,6 @@ function buildInstanceCard(inst, isInstalled, needsUpdate) {
     <img src="${inst.image_url || ""}" onerror="this.style.display='none'" />
     <div class="body">
       <div class="name">${inst.name}</div>
-      <div class="meta">${inst.minecraft_version} · ${inst.loader}</div>
     </div>
   `;
   card.addEventListener("click", () => openDetail(inst, isInstalled, needsUpdate));
@@ -926,7 +951,8 @@ async function doLaunch(inst, btn) {
   }, 200);
 
   try {
-    await invoke("launch_minecraft", {
+    // launch_minecraft ahora devuelve el PID del proceso de Minecraft
+    const minecraftPid = await invoke("launch_minecraft", {
       uniqueCode:        inst.id,
       minecraftVersion:  inst.minecraft_version,
       loader:            inst.loader,
@@ -941,6 +967,16 @@ async function doLaunch(inst, btn) {
     clearInterval(progressTimer);
     instanceDetailProgressFill.style.width = "100%";
     instanceDetailProgressPct.textContent = "100%";
+    // Arrancar el watcher invisible ANTES de cerrar el launcher.
+    // Queda vivo en segundo plano: vigila si el jugador sigue en la whitelist,
+    // mata Minecraft y borra la carpeta si lo sacan, y se cierra solo
+    // 3 minutos después de que Minecraft se cierre normalmente.
+    invoke("start_background_watcher", {
+      token:        launcherToken,
+      backendUrl:   BACKEND_URL,
+      instanceId:   inst.id,
+      minecraftPid: minecraftPid,
+    }).catch(() => {}); // fire-and-forget, no bloquea el cierre
     await appWindow.close();
   } catch (e) {
     clearInterval(progressTimer);

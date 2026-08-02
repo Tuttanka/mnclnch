@@ -810,6 +810,34 @@ fn get_installed_version(app: AppHandle, unique_code: String) -> Option<String> 
         .map(|s| s.trim().to_string())
 }
 
+/// Devuelve los IDs (nombres de carpeta) de todas las instancias instaladas localmente.
+#[tauri::command]
+fn list_installed_instance_ids(app: AppHandle) -> Vec<String> {
+    let instances_root = data_dir(&app).join("instances");
+    let Ok(entries) = std::fs::read_dir(&instances_root) else { return vec![]; };
+    entries
+        .filter_map(|e| {
+            let e = e.ok()?;
+            if e.file_type().ok()?.is_dir() {
+                Some(e.file_name().to_string_lossy().to_string())
+            } else {
+                None
+            }
+        })
+        .collect()
+}
+
+/// Borra la carpeta completa de una instancia local (mods, saves, config, todo).
+/// Se llama cuando el backend ya no devuelve esa instancia para el usuario.
+#[tauri::command]
+fn delete_instance_folder(app: AppHandle, unique_code: String) -> Result<(), String> {
+    let dir = instance_dir(&app, &unique_code);
+    if dir.exists() {
+        std::fs::remove_dir_all(&dir).map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
 /// Instala una instancia completa:
 /// 1. Java embebido
 /// 2. version.json + client.jar de Mojang
@@ -884,7 +912,7 @@ async fn launch_minecraft(
     ram_gb: u32,
     window_width: Option<u32>,
     window_height: Option<u32>,
-) -> Result<(), String> {
+) -> Result<u32, String> {
     let inst_dir = instance_dir(&app, &unique_code);
     if !inst_dir.exists() {
         return Err("La instancia no está instalada.".into());
@@ -967,14 +995,15 @@ async fn launch_minecraft(
        .arg("--height").arg(window_height.unwrap_or(720).to_string())
        .current_dir(&inst_dir);
 
-    cmd.spawn().map_err(|e| format!("No se pudo lanzar Minecraft: {e}"))?;
+    let child = cmd.spawn().map_err(|e| format!("No se pudo lanzar Minecraft: {e}"))?;
+    let pid = child.id();
 
     // Esperamos unos segundos para dar tiempo a que la ventana de Minecraft
     // termine de abrir antes de cerrar el launcher (aproximado: no hay forma
     // 100% confiable de detectar "la ventana ya es visible" sin hooks nativos).
     tokio::time::sleep(std::time::Duration::from_secs(24)).await;
 
-    Ok(())
+    Ok(pid)
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1114,6 +1143,230 @@ async fn do_microsoft_login(app: &AppHandle, session_id: &str, backend_url: &str
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Watcher de fondo — corre invisible después de que el launcher se cierra
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Guarda el estado del watcher en disco para poder recuperarlo si el proceso muere.
+fn save_watcher_state(app: &AppHandle, token: &str, backend_url: &str, instance_id: &str, pid: u32) {
+    let path = data_dir(app).join("watcher.json");
+    let state = serde_json::json!({
+        "token": token,
+        "backend_url": backend_url,
+        "instance_id": instance_id,
+        "pid": pid,
+    });
+    let _ = std::fs::create_dir_all(data_dir(app));
+    let _ = std::fs::write(&path, state.to_string());
+}
+
+/// Borra el archivo de estado del watcher (cuando termina limpiamente).
+fn clear_watcher_state(app: &AppHandle) {
+    let path = data_dir(app).join("watcher.json");
+    let _ = std::fs::remove_file(&path);
+}
+
+/// Al arrancar el launcher, revisa si quedó un watcher.json de una sesión anterior
+/// (significa que el watcher murió inesperadamente). Si Minecraft sigue vivo,
+/// reactiva el watcher. Si ya no está, limpia el archivo.
+fn recover_watcher_if_needed(app: &AppHandle) {
+    let path = data_dir(app).join("watcher.json");
+    let Ok(raw) = std::fs::read_to_string(&path) else { return; };
+    let Ok(val) = serde_json::from_str::<serde_json::Value>(&raw) else {
+        let _ = std::fs::remove_file(&path);
+        return;
+    };
+
+    let token       = val["token"].as_str().unwrap_or("").to_string();
+    let backend_url = val["backend_url"].as_str().unwrap_or("").to_string();
+    let instance_id = val["instance_id"].as_str().unwrap_or("").to_string();
+    let pid         = val["pid"].as_u64().unwrap_or(0) as u32;
+
+    if token.is_empty() || instance_id.is_empty() || pid == 0 {
+        let _ = std::fs::remove_file(&path);
+        return;
+    }
+
+    // Verificar si Minecraft sigue corriendo
+    #[cfg(target_os = "windows")]
+    let mc_still_alive = {
+        let out = std::process::Command::new("tasklist")
+            .args(["/FI", &format!("PID eq {}", pid), "/NH"])
+            .output();
+        match out {
+            Ok(o) => String::from_utf8_lossy(&o.stdout).contains(&pid.to_string()),
+            Err(_) => false,
+        }
+    };
+    #[cfg(not(target_os = "windows"))]
+    let mc_still_alive = unsafe { libc::kill(pid as i32, 0) == 0 };
+
+    if mc_still_alive {
+        // Minecraft sigue vivo — reactivar el watcher
+        let app_clone = app.clone();
+        tokio::spawn(async move {
+            // Pequeña espera para que el launcher termine de iniciar
+            tokio::time::sleep(std::time::Duration::from_secs(5)).await;
+            start_background_watcher(app_clone, token, backend_url, instance_id, pid);
+        });
+    } else {
+        // Minecraft ya no está — solo limpiar el archivo
+        let _ = std::fs::remove_file(&path);
+    }
+}
+
+/// Lanza un watcher invisible en segundo plano que:
+/// 1. Cada 2 min consulta al backend si el jugador sigue teniendo acceso a la instancia.
+/// 2. Si ya no tiene acceso → mata Minecraft → borra la carpeta de la instancia → termina.
+/// 3. Si Minecraft se cerró solo → espera 3 min más haciendo la misma consulta → termina.
+#[tauri::command]
+fn start_background_watcher(
+    app: AppHandle,
+    token: String,
+    backend_url: String,
+    instance_id: String,   // UUID de la instancia a vigilar
+    minecraft_pid: u32,    // PID del proceso de Minecraft
+) {
+    let app_clone = app.clone();
+
+    tokio::spawn(async move {
+        // Persistir estado por si el proceso muere inesperadamente
+        save_watcher_state(&app_clone, &token, &backend_url, &instance_id, minecraft_pid);
+
+        let client = reqwest::Client::new();
+        let check_interval = std::time::Duration::from_secs(2 * 60); // 2 minutos
+        let grace_period   = std::time::Duration::from_secs(5 * 60); // 5 min después de que Minecraft cierre
+
+        // Función auxiliar: ¿sigue vivo el proceso de Minecraft?
+        let mc_alive = |pid: u32| -> bool {
+            // En Windows: tasklist /FI "PID eq <pid>" /NH
+            // Si devuelve algo con el pid, sigue vivo.
+            #[cfg(target_os = "windows")]
+            {
+                let out = std::process::Command::new("tasklist")
+                    .args(["/FI", &format!("PID eq {}", pid), "/NH"])
+                    .output();
+                match out {
+                    Ok(o) => {
+                        let s = String::from_utf8_lossy(&o.stdout);
+                        s.contains(&pid.to_string())
+                    }
+                    Err(_) => false,
+                }
+            }
+            #[cfg(not(target_os = "windows"))]
+            {
+                // En otros SO: kill -0 no mata, solo verifica existencia
+                unsafe { libc::kill(pid as i32, 0) == 0 }
+            }
+        };
+
+        // Función auxiliar: matar Minecraft
+        let kill_minecraft = |pid: u32| {
+            #[cfg(target_os = "windows")]
+            {
+                let _ = std::process::Command::new("taskkill")
+                    .args(["/PID", &pid.to_string(), "/F"])
+                    .output();
+            }
+            #[cfg(not(target_os = "windows"))]
+            {
+                unsafe { libc::kill(pid as i32, libc::SIGKILL); }
+            }
+        };
+
+        // Función auxiliar: consultar al backend si esta instancia sigue disponible.
+        // Devuelve: Ok(true) = tiene acceso, Ok(false) = sin acceso, Err = fallo de red
+        let has_access = |client: &reqwest::Client, backend_url: &str, token: &str, instance_id: &str| {
+            let url    = format!("{}/instances", backend_url);
+            let auth   = format!("Bearer {}", token);
+            let iid    = instance_id.to_string();
+            let c      = client.clone();
+            let u      = url.clone();
+            let a      = auth.clone();
+            async move {
+                match c.get(&u).header("Authorization", &a).send().await {
+                    Ok(res) => {
+                        if res.status() == 401 {
+                            // Token vencido o revocado → sin acceso definitivo
+                            return Ok(false);
+                        }
+                        if res.status().is_success() {
+                            if let Ok(list) = res.json::<Vec<serde_json::Value>>().await {
+                                return Ok(list.iter().any(|i| {
+                                    i["id"].as_str().unwrap_or("") == iid
+                                }));
+                            }
+                        }
+                        Err(()) // respuesta rara, contar como fallo de red
+                    }
+                    Err(_) => Err(()), // sin internet u otro error de red
+                }
+            }
+        };
+
+        let mut mc_was_alive    = true;
+        let mut grace_start: Option<std::time::Instant> = None;
+        let mut network_fails: u32 = 0;
+        const MAX_NET_FAILS: u32   = 3; // 3 fallos seguidos (~6 min sin red) → borrar igual
+
+        loop {
+            tokio::time::sleep(check_interval).await;
+
+            let alive = mc_alive(minecraft_pid);
+
+            // Detectar si Minecraft acaba de cerrarse
+            if mc_was_alive && !alive {
+                grace_start = Some(std::time::Instant::now());
+            }
+            mc_was_alive = alive;
+
+            // Consultar acceso al backend
+            match has_access(&client, &backend_url, &token, &instance_id).await {
+                Ok(false) => {
+                    // Sin acceso confirmado (o token vencido) → matar Minecraft → borrar → salir
+                    if alive {
+                        kill_minecraft(minecraft_pid);
+                        tokio::time::sleep(std::time::Duration::from_secs(3)).await;
+                    }
+                    let dir = instance_dir(&app_clone, &instance_id);
+                    if dir.exists() { let _ = std::fs::remove_dir_all(&dir); }
+                    clear_watcher_state(&app_clone);
+                    break;
+                }
+                Ok(true) => {
+                    // Tiene acceso — resetear contador de fallos de red
+                    network_fails = 0;
+                }
+                Err(()) => {
+                    // Fallo de red — acumular
+                    network_fails += 1;
+                    if network_fails >= MAX_NET_FAILS {
+                        // Demasiados fallos seguidos (probablemente cortó internet a propósito)
+                        // → tratar como sin acceso
+                        if alive {
+                            kill_minecraft(minecraft_pid);
+                            tokio::time::sleep(std::time::Duration::from_secs(3)).await;
+                        }
+                        let dir = instance_dir(&app_clone, &instance_id);
+                        if dir.exists() { let _ = std::fs::remove_dir_all(&dir); }
+                        clear_watcher_state(&app_clone);
+                        break;
+                    }
+                }
+            }
+
+            // Si Minecraft ya cerró y pasaron los 5 min de gracia → terminar watcher
+            if let Some(start) = grace_start {
+                if start.elapsed() >= grace_period {
+                    clear_watcher_state(&app_clone);
+                    break;
+                }
+            }
+        }
+    });
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Salir
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -1133,6 +1386,53 @@ pub fn run() {
         .plugin(tauri_plugin_process::init())
         .manage(Arc::new(MsSessions(Mutex::new(HashMap::new()))))
         .setup(|app| {
+            // ── Lock file: evitar que el launcher abra dos veces ────────────
+            // Si ya hay una instancia corriendo, el archivo .lock existe y está
+            // bloqueado. En ese caso cerramos esta nueva instancia silenciosamente.
+            let lock_path = app.path().app_data_dir()
+                .unwrap_or_else(|_| std::path::PathBuf::from("."))
+                .join("launcher.lock");
+
+            let lock_file = std::fs::OpenOptions::new()
+                .create(true)
+                .write(true)
+                .open(&lock_path);
+
+            match lock_file {
+                Ok(f) => {
+                    use std::os::windows::io::AsRawHandle;
+                    // En Windows usamos LockFileEx para bloquear exclusivo
+                    #[cfg(target_os = "windows")]
+                    {
+                        use windows_sys::Win32::Storage::FileSystem::{LockFileEx, LOCKFILE_EXCLUSIVE_LOCK, LOCKFILE_FAIL_IMMEDIATELY};
+                        use windows_sys::Win32::System::IO::OVERLAPPED;
+                        let handle = f.as_raw_handle() as isize;
+                        let mut overlapped = unsafe { std::mem::zeroed::<OVERLAPPED>() };
+                        let locked = unsafe {
+                            LockFileEx(handle, LOCKFILE_EXCLUSIVE_LOCK | LOCKFILE_FAIL_IMMEDIATELY, 0, 1, 0, &mut overlapped)
+                        };
+                        if locked == 0 {
+                            // Ya hay otra instancia — cerrar esta
+                            std::process::exit(0);
+                        }
+                        // Guardar el file handle para que viva toda la sesión
+                        app.manage(f);
+                    }
+                    #[cfg(not(target_os = "windows"))]
+                    {
+                        use std::os::unix::io::AsRawFd;
+                        let fd = f.as_raw_fd();
+                        let locked = unsafe { libc::flock(fd, libc::LOCK_EX | libc::LOCK_NB) };
+                        if locked != 0 {
+                            std::process::exit(0);
+                        }
+                        app.manage(f);
+                    }
+                }
+                Err(_) => {} // Si no se puede crear el lock, seguir igual
+            }
+            // ────────────────────────────────────────────────────────────────
+
             // Limpieza de una carpeta de AppData vieja, que quedó huérfana de
             // cuando el identifier de la app era distinto ("cheverestudios.launcher").
             // Se ejecuta una vez por arranque; si ya no existe, no hace nada.
@@ -1144,12 +1444,19 @@ pub fn run() {
                     }
                 }
             }
+
+            // Recuperar watcher si murió inesperadamente en sesión anterior
+            recover_watcher_if_needed(&app.handle().clone());
+
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
             get_installed_version,
+            list_installed_instance_ids,
+            delete_instance_folder,
             download_mrpack,
             launch_minecraft,
+            start_background_watcher,
             start_microsoft_login,
             poll_microsoft_login,
             exit_app,
