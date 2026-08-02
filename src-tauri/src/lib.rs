@@ -1406,7 +1406,7 @@ pub fn run() {
                     {
                         use windows_sys::Win32::Storage::FileSystem::{LockFileEx, LOCKFILE_EXCLUSIVE_LOCK, LOCKFILE_FAIL_IMMEDIATELY};
                         use windows_sys::Win32::System::IO::OVERLAPPED;
-                        let handle = f.as_raw_handle() as isize;
+                        let handle = f.as_raw_handle();
                         let mut overlapped = unsafe { std::mem::zeroed::<OVERLAPPED>() };
                         let locked = unsafe {
                             LockFileEx(handle, LOCKFILE_EXCLUSIVE_LOCK | LOCKFILE_FAIL_IMMEDIATELY, 0, 1, 0, &mut overlapped)
