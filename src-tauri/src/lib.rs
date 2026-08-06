@@ -998,6 +998,14 @@ async fn launch_minecraft(
     let child = cmd.spawn().map_err(|e| format!("No se pudo lanzar Minecraft: {e}"))?;
     let pid = child.id();
 
+    // Ocultar la ventana del launcher (no se cierra el proceso, solo se
+    // esconde de pantalla y de la barra de tareas) para que solo se vea
+    // Minecraft. Se vuelve a mostrar cuando el watcher detecta que el
+    // juego se cerró (ver start_background_watcher).
+    if let Some(win) = app.get_webview_window("main") {
+        let _ = win.hide();
+    }
+
     // Esperamos unos segundos para dar tiempo a que la ventana de Minecraft
     // termine de abrir antes de cerrar el launcher (aproximado: no hay forma
     // 100% confiable de detectar "la ventana ya es visible" sin hooks nativos).
@@ -1317,6 +1325,12 @@ fn start_background_watcher(
             // Detectar si Minecraft acaba de cerrarse
             if mc_was_alive && !alive {
                 grace_start = Some(std::time::Instant::now());
+
+                // Minecraft se cerró: volvemos a mostrar el launcher
+                if let Some(win) = app_clone.get_webview_window("main") {
+                    let _ = win.show();
+                    let _ = win.set_focus();
+                }
             }
             mc_was_alive = alive;
 

@@ -47,21 +47,32 @@ async function checkForUpdates() {
       document.body.appendChild(overlay);
       let downloaded = 0;
       let total = 0;
-      await update.downloadAndInstall((event) => {
-        if (event.event === "Started") {
-          total = event.data.contentLength || 0;
-        } else if (event.event === "Progress") {
-          downloaded += event.data.chunkLength;
-          if (total > 0) {
-            const pct = Math.min(100, Math.round((downloaded / total) * 100));
-            document.getElementById("update-bar").style.width = pct + "%";
-            document.getElementById("update-progress").textContent = `Descargando... ${pct}%`;
+      try {
+        await update.downloadAndInstall((event) => {
+          if (event.event === "Started") {
+            total = event.data.contentLength || 0;
+          } else if (event.event === "Progress") {
+            downloaded += event.data.chunkLength;
+            if (total > 0) {
+              const pct = Math.min(100, Math.round((downloaded / total) * 100));
+              document.getElementById("update-bar").style.width = pct + "%";
+              document.getElementById("update-progress").textContent = `Descargando... ${pct}%`;
+            }
+          } else if (event.event === "Finished") {
+            document.getElementById("update-progress").textContent = "Instalando...";
           }
-        } else if (event.event === "Finished") {
-          document.getElementById("update-progress").textContent = "Instalando...";
-        }
-      });
-      await relaunch();
+        });
+        await relaunch();
+      } catch (updateErr) {
+        console.warn("Fallo la descarga de la actualizacion:", updateErr);
+        const progressEl = document.getElementById("update-progress");
+        if (progressEl) progressEl.textContent = "No se pudo actualizar. Reintenta o cierra e inicia de nuevo.";
+        const retryBtn = document.createElement("button");
+        retryBtn.textContent = "Cerrar";
+        retryBtn.style.cssText = "margin-top:8px;padding:8px 24px;border-radius:50px;border:none;cursor:pointer;font-weight:700;";
+        retryBtn.onclick = () => overlay.remove();
+        overlay.querySelector("div").appendChild(retryBtn);
+      }
     }
   } catch (e) {
     console.warn("No se pudo revisar actualizaciones:", e);
@@ -73,6 +84,8 @@ checkForUpdates();
 // ─────────────────────────────────────────────────────────────────────────────
 // Auto-login con sesión guardada
 // ─────────────────────────────────────────────────────────────────────────────
+const SESSION_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000; // 7 dias
+
 async function tryAutoLogin() {
   await configReady;
   const raw = localStorage.getItem(SESSION_KEY);
@@ -82,11 +95,14 @@ async function tryAutoLogin() {
   try { saved = JSON.parse(raw); } catch (_) { localStorage.removeItem(SESSION_KEY); return; }
   if (!saved.token || !saved.username) { localStorage.removeItem(SESSION_KEY); return; }
 
+  if (!saved.savedAt || (Date.now() - saved.savedAt) > SESSION_MAX_AGE_MS) {
+    localStorage.removeItem(SESSION_KEY);
+    return;
+  }
+
   try {
-    const res = await fetch(`${BACKEND_URL}/instances`, {
-      headers: { "Authorization": `Bearer ${saved.token}` }
-    });
-    if (res.ok) {
+    const { ok, instances } = await fetchInstances(saved.token);
+    if (ok) {
       onLoginSuccess(saved.token, saved.username, saved.accountType, saved.mcAccessToken || "", saved.mcUuid || "");
     } else {
       localStorage.removeItem(SESSION_KEY);
@@ -94,6 +110,33 @@ async function tryAutoLogin() {
   } catch (_) {
     // Sin conexion: no se puede validar, se deja la pantalla de login normal.
   }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Fetch centralizado de /instances (usado por tryAutoLogin, login normal,
+// loadInstances y el polling). Maneja el 401 en un solo lugar.
+// ─────────────────────────────────────────────────────────────────────────────
+async function fetchInstances(token) {
+  const res = await fetch(`${BACKEND_URL}/instances`, {
+    headers: { "Authorization": `Bearer ${token}` }
+  });
+
+  if (res.status === 401) {
+    handleSessionExpired();
+    return { ok: false, expired: true, instances: [] };
+  }
+
+  if (!res.ok) return { ok: false, expired: false, instances: [] };
+
+  const instances = await res.json();
+  return { ok: true, expired: false, instances };
+}
+
+function handleSessionExpired() {
+  if (instancesPollTimer) clearInterval(instancesPollTimer);
+  launcherToken = null;
+  launcherUsername = null;
+  localStorage.removeItem(SESSION_KEY);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -388,15 +431,9 @@ function startInstancesPolling() {
   instancesPollTimer = setInterval(async () => {
     await configReady;
     try {
-      const res = await fetch(`${BACKEND_URL}/instances`, {
-        headers: { "Authorization": `Bearer ${launcherToken}` }
-      });
+      const { ok, expired, instances } = await fetchInstances(launcherToken);
 
-      if (res.status === 401) {
-        clearInterval(instancesPollTimer);
-        launcherToken = null;
-        launcherUsername = null;
-        localStorage.removeItem(SESSION_KEY);
+      if (expired) {
         hideInlineCode();
         setStatus("Tu acceso fue revocado.", true);
         setButtonsDisabled(false);
@@ -404,9 +441,7 @@ function startInstancesPolling() {
         return;
       }
 
-      if (!res.ok) return;
-
-      const instances = await res.json();
+      if (!ok) return;
 
       // ── Borrar instancias revocadas ──────────────────────────────────────
       // Comparamos las carpetas locales con las que el backend devuelve.
@@ -756,7 +791,7 @@ function onLoginSuccess(token, username, accountType, mcAccessToken = "", mcUuid
   launcherMcAccessToken = mcAccessToken;
   launcherMcUuid = mcUuid;
 
-  localStorage.setItem(SESSION_KEY, JSON.stringify({ token, username, accountType, mcAccessToken, mcUuid }));
+  localStorage.setItem(SESSION_KEY, JSON.stringify({ token, username, accountType, mcAccessToken, mcUuid, savedAt: Date.now() }));
 
   showScreen("main-screen");
 
@@ -789,15 +824,9 @@ async function loadInstances() {
 
   let instances = [];
   try {
-    const res = await fetch(`${BACKEND_URL}/instances`, {
-      headers: { "Authorization": `Bearer ${launcherToken}` }
-    });
+    const { ok, expired, instances: fetched } = await fetchInstances(launcherToken);
 
-    if (res.status === 401) {
-      if (instancesPollTimer) clearInterval(instancesPollTimer);
-      launcherToken = null;
-      launcherUsername = null;
-      localStorage.removeItem(SESSION_KEY);
+    if (expired) {
       hideInlineCode();
       setStatus("Tu acceso fue revocado.", true);
       setButtonsDisabled(false);
@@ -805,7 +834,12 @@ async function loadInstances() {
       return;
     }
 
-    instances = await res.json();
+    if (!ok) {
+      instancesPanel.innerHTML = `<p style='color:#f87171;font-size:11px;padding:4px'>Error al cargar instancias</p>`;
+      return;
+    }
+
+    instances = fetched;
   } catch (e) {
     instancesPanel.innerHTML = `<p style='color:#f87171;font-size:11px;padding:4px'>Error al cargar instancias</p>`;
     return;
@@ -839,12 +873,20 @@ async function loadInstances() {
 function buildInstanceCard(inst, isInstalled, needsUpdate) {
   const card = document.createElement("div");
   card.className = "instance-card";
-  card.innerHTML = `
-    <img src="${inst.image_url || ""}" onerror="this.style.display='none'" />
-    <div class="body">
-      <div class="name">${inst.name}</div>
-    </div>
-  `;
+
+  const img = document.createElement("img");
+  img.src = inst.image_url || "";
+  img.onerror = () => { img.style.display = "none"; };
+
+  const body = document.createElement("div");
+  body.className = "body";
+  const name = document.createElement("div");
+  name.className = "name";
+  name.textContent = inst.name;
+  body.appendChild(name);
+
+  card.appendChild(img);
+  card.appendChild(body);
   card.addEventListener("click", () => openDetail(inst, isInstalled, needsUpdate));
   return card;
 }
