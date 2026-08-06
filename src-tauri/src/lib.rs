@@ -978,7 +978,7 @@ fn get_or_create_mc_job() -> isize {
         use windows_sys::Win32::System::JobObjects::*;
 
         let job = CreateJobObjectW(std::ptr::null(), std::ptr::null());
-        if job == 0 {
+        if job.is_null() {
             return 0;
         }
 
@@ -1004,9 +1004,9 @@ fn attach_to_mc_job(child: &std::process::Child) {
 
     let job = get_or_create_mc_job();
     if job == 0 { return; }
-    let process_handle = child.as_raw_handle() as isize;
+    let process_handle = child.as_raw_handle() as *mut core::ffi::c_void;
     unsafe {
-        AssignProcessToJobObject(job, process_handle);
+        AssignProcessToJobObject(job as *mut core::ffi::c_void, process_handle);
     }
 }
 
