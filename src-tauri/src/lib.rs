@@ -56,6 +56,11 @@ fn version_file(app: &AppHandle, unique_code: &str) -> PathBuf {
     instance_dir(app, unique_code).join("version.txt")
 }
 
+/// data\instances\<unique_code>\manifest_locked.json
+fn manifest_file(app: &AppHandle, unique_code: &str) -> PathBuf {
+    instance_dir(app, unique_code).join("manifest_locked.json")
+}
+
 /// data\assets\
 fn assets_dir(app: &AppHandle) -> PathBuf {
     data_dir(app).join("assets")
@@ -746,6 +751,11 @@ async fn install_mrpack(
         serde_json::from_str(&s).map_err(|e| format!("modrinth.index.json inválido: {e}"))?
     };
 
+    // Lista de rutas "oficiales" del modpack (overrides + mods), en minúsculas
+    // con '/' como separador. Se guarda en manifest_locked.json y se usa para
+    // limpiar mods/texturas agregados a mano antes de cada Play.
+    let mut allowed_paths: Vec<String> = Vec::new();
+
     // Extraer overrides/ → carpeta de instancia
     let total_files = archive.len();
     for i in 0..total_files {
@@ -766,6 +776,7 @@ async fn install_mrpack(
             if let Some(p) = out.parent() { std::fs::create_dir_all(p).map_err(|e| e.to_string())?; }
             let mut out_file = std::fs::File::create(&out).map_err(|e| e.to_string())?;
             std::io::copy(&mut file, &mut out_file).map_err(|e| e.to_string())?;
+            allowed_paths.push(rel.replace('\\', "/").to_lowercase());
         }
     }
 
@@ -773,6 +784,7 @@ async fn install_mrpack(
     let total_mods = index.files.len();
     for (i, mod_file) in index.files.iter().enumerate() {
         let out_path = inst_dir.join(&mod_file.path);
+        allowed_paths.push(mod_file.path.replace('\\', "/").to_lowercase());
         if out_path.exists() { continue; }
         if let Some(p) = out_path.parent() { std::fs::create_dir_all(p).map_err(|e| e.to_string())?; }
 
@@ -790,6 +802,10 @@ async fn install_mrpack(
             return Err(format!("No se pudo descargar: {}", mod_file.path));
         }
     }
+
+    // Guardar manifest_locked.json con la lista de archivos permitidos
+    let manifest_json = serde_json::to_string_pretty(&allowed_paths).map_err(|e| e.to_string())?;
+    std::fs::write(manifest_file(app, unique_code), manifest_json).map_err(|e| e.to_string())?;
 
     // 4. Guardar version.txt
     std::fs::write(version_file(app, unique_code), mrpack_version)
@@ -836,6 +852,57 @@ fn delete_instance_folder(app: AppHandle, unique_code: String) -> Result<(), Str
         std::fs::remove_dir_all(&dir).map_err(|e| e.to_string())?;
     }
     Ok(())
+}
+
+/// Recorre `mods/`, `resourcepacks/` y `shaderpacks/` de la instancia y borra
+/// cualquier archivo que NO esté en manifest_locked.json (es decir, que el
+/// jugador haya metido a mano y no venga del modpack oficial). No toca
+/// `saves/`, `screenshots/`, `logs/`, `config/` ni `options.txt`, porque esas
+/// carpetas guardan progreso del jugador y ajustes que los propios mods
+/// generan al abrir el juego.
+fn clean_unofficial_files(app: &AppHandle, unique_code: &str) {
+    let inst_dir = instance_dir(app, unique_code);
+    let manifest_path = manifest_file(app, unique_code);
+
+    let allowed: std::collections::HashSet<String> = std::fs::read_to_string(&manifest_path)
+        .ok()
+        .and_then(|s| serde_json::from_str::<Vec<String>>(&s).ok())
+        .map(|v| v.into_iter().collect())
+        .unwrap_or_default();
+
+    // Si no hay manifiesto (instancia vieja instalada antes de este cambio),
+    // no borramos nada para no romper instalaciones existentes.
+    if allowed.is_empty() {
+        return;
+    }
+
+    for folder in ["mods", "resourcepacks", "shaderpacks"] {
+        let dir = inst_dir.join(folder);
+        if dir.exists() {
+            clean_dir_recursive(&dir, &inst_dir, &allowed);
+        }
+    }
+}
+
+/// Recorre `dir` recursivamente (sin dependencias externas) y borra los
+/// archivos cuya ruta relativa a `root` no esté en `allowed`.
+fn clean_dir_recursive(dir: &std::path::Path, root: &std::path::Path, allowed: &std::collections::HashSet<String>) {
+    let Ok(entries) = std::fs::read_dir(dir) else { return; };
+    for entry in entries.filter_map(|e| e.ok()) {
+        let path = entry.path();
+        let Ok(file_type) = entry.file_type() else { continue; };
+        if file_type.is_dir() {
+            clean_dir_recursive(&path, root, allowed);
+        } else if file_type.is_file() {
+            let rel = match path.strip_prefix(root) {
+                Ok(r) => r.to_string_lossy().replace('\\', "/").to_lowercase(),
+                Err(_) => continue,
+            };
+            if !allowed.contains(&rel) {
+                let _ = std::fs::remove_file(&path);
+            }
+        }
+    }
 }
 
 /// Instala una instancia completa:
@@ -898,6 +965,54 @@ async fn download_mrpack(
     Ok(())
 }
 
+/// Job Object de Windows: si el proceso del launcher muere (cerrado normal,
+/// crash, o lo matan desde el Administrador de Tareas), Windows mata también
+/// a todos los procesos asignados a este job — o sea, Minecraft. No depende
+/// de que ningún watcher siga corriendo, lo hace el sistema operativo.
+#[cfg(target_os = "windows")]
+static MC_JOB_HANDLE: std::sync::OnceLock<isize> = std::sync::OnceLock::new();
+
+#[cfg(target_os = "windows")]
+fn get_or_create_mc_job() -> isize {
+    *MC_JOB_HANDLE.get_or_init(|| unsafe {
+        use windows_sys::Win32::System::JobObjects::*;
+
+        let job = CreateJobObjectW(std::ptr::null(), std::ptr::null());
+        if job == 0 {
+            return 0;
+        }
+
+        let mut info: JOBOBJECT_EXTENDED_LIMIT_INFORMATION = std::mem::zeroed();
+        info.BasicLimitInformation.LimitFlags = JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE;
+        SetInformationJobObject(
+            job,
+            JobObjectExtendedLimitInformation,
+            &info as *const _ as *const core::ffi::c_void,
+            std::mem::size_of::<JOBOBJECT_EXTENDED_LIMIT_INFORMATION>() as u32,
+        );
+
+        job as isize
+    })
+}
+
+/// Asigna el proceso de Minecraft recién lanzado al job object, para que
+/// muera junto con el launcher.
+#[cfg(target_os = "windows")]
+fn attach_to_mc_job(child: &std::process::Child) {
+    use std::os::windows::io::AsRawHandle;
+    use windows_sys::Win32::System::JobObjects::AssignProcessToJobObject;
+
+    let job = get_or_create_mc_job();
+    if job == 0 { return; }
+    let process_handle = child.as_raw_handle() as isize;
+    unsafe {
+        AssignProcessToJobObject(job, process_handle);
+    }
+}
+
+#[cfg(not(target_os = "windows"))]
+fn attach_to_mc_job(_child: &std::process::Child) {}
+
 /// Lanza Minecraft con la instancia instalada
 #[tauri::command]
 async fn launch_minecraft(
@@ -917,6 +1032,11 @@ async fn launch_minecraft(
     if !inst_dir.exists() {
         return Err("La instancia no está instalada.".into());
     }
+
+    // Borra cualquier mod/textura que el jugador haya metido a mano y no
+    // venga del modpack oficial, antes de arrancar el juego.
+    emit(&app, &unique_code, "verificando", 0, "Verificando instalación...");
+    clean_unofficial_files(&app, &unique_code);
 
     let client = reqwest::Client::new();
     let ver_json = get_version_json(&app, &client, &minecraft_version, &unique_code).await?;
@@ -997,6 +1117,7 @@ async fn launch_minecraft(
 
     let child = cmd.spawn().map_err(|e| format!("No se pudo lanzar Minecraft: {e}"))?;
     let pid = child.id();
+    attach_to_mc_job(&child);
 
     // Ocultar la ventana del launcher (no se cierra el proceso, solo se
     // esconde de pantalla y de la barra de tareas) para que solo se vea
@@ -1316,6 +1437,43 @@ fn start_background_watcher(
         let mut grace_start: Option<std::time::Instant> = None;
         let mut network_fails: u32 = 0;
         const MAX_NET_FAILS: u32   = 3; // 3 fallos seguidos (~6 min sin red) → borrar igual
+
+        // Segunda tarea en paralelo: mientras Minecraft está corriendo, cada
+        // 15s revisa mods/resourcepacks/shaderpacks y borra cualquier archivo
+        // agregado a mano que no venga del modpack oficial. Esto tapa el hueco
+        // de que alguien meta una textura DESPUÉS de darle Play (con el juego
+        // ya abierto) y la use en esa misma partida.
+        {
+            let app_watch = app_clone.clone();
+            let instance_id_watch = instance_id.clone();
+            let pid_watch = minecraft_pid;
+            tokio::spawn(async move {
+                let alive_check = |pid: u32| -> bool {
+                    #[cfg(target_os = "windows")]
+                    {
+                        let out = std::process::Command::new("tasklist")
+                            .args(["/FI", &format!("PID eq {}", pid), "/NH"])
+                            .output();
+                        match out {
+                            Ok(o) => String::from_utf8_lossy(&o.stdout).contains(&pid.to_string()),
+                            Err(_) => false,
+                        }
+                    }
+                    #[cfg(not(target_os = "windows"))]
+                    {
+                        unsafe { libc::kill(pid as i32, 0) == 0 }
+                    }
+                };
+
+                loop {
+                    tokio::time::sleep(std::time::Duration::from_secs(15)).await;
+                    if !alive_check(pid_watch) {
+                        break; // el juego se cerró, esta tarea termina
+                    }
+                    clean_unofficial_files(&app_watch, &instance_id_watch);
+                }
+            });
+        }
 
         loop {
             tokio::time::sleep(check_interval).await;

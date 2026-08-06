@@ -1,4 +1,12 @@
 // ─────────────────────────────────────────────────────────────────────────────
+// Splash de carga inicial (se ve mientras se chequean actualizaciones)
+// ─────────────────────────────────────────────────────────────────────────────
+function hideSplash() {
+  const splash = document.getElementById("splash-screen");
+  if (splash) splash.classList.add("hidden");
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Barra de título personalizada
 // ─────────────────────────────────────────────────────────────────────────────
 const { getCurrentWindow } = window.__TAURI__.window;
@@ -16,7 +24,12 @@ async function checkForUpdates() {
     const { check } = window.__TAURI__.updater;
     const { relaunch } = window.__TAURI__.process;
     const update = await check();
+
+    // Ya sabemos si hay o no actualización: sacamos el splash de carga.
+    hideSplash();
+
     if (update) {
+
       const overlay = document.createElement("div");
       overlay.style.cssText = `
         position:fixed; inset:0; z-index:9999;
@@ -76,6 +89,7 @@ async function checkForUpdates() {
     }
   } catch (e) {
     console.warn("No se pudo revisar actualizaciones:", e);
+    hideSplash();
   }
 }
 
